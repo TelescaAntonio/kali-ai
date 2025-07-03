@@ -1,3 +1,7 @@
+![kali-ai](https://github.com/user-attachments/assets/18380276-5327-4901-bd9c-de974d7a32fd)
+
+
+
 # 🤖 Kali-AI v2.1 - Ultimate System Control Agent
 
 Un assistente AI intelligente per il controllo completo del sistema Kali Linux.
