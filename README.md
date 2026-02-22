@@ -93,7 +93,7 @@ See the LICENSE file for full details.
 ## Publication
 
 DOI: 10.13140/RG.2.2.27473.39524
-ResearchGate: https://www.researchgate.net/publication/389188285
+ResearchGate: https://www.researchgate.net/publication/401050676
 
 ## Contact
 
