@@ -2,44 +2,44 @@ Copyright (c) 2026 Antonio Telesca. All Rights Reserved.
 
 KALI-AI v6.0 - Cognitive Pentest Framework
 
-TUTTI I DIRITTI RISERVATI / ALL RIGHTS RESERVED
+ALL RIGHTS RESERVED
 
-Il presente software e la relativa documentazione sono di proprieta
-esclusiva di Antonio Telesca (di seguito "l Autore").
+This software and its documentation are the exclusive property
+of Antonio Telesca (hereinafter "the Author").
 
-DIVIETI
-E severamente vietato, senza il previo consenso scritto dell Autore:
-- Copiare, riprodurre, distribuire o redistribuire il codice sorgente
-  o parti di esso, in qualsiasi forma o con qualsiasi mezzo.
-- Modificare, adattare, tradurre o creare opere derivate.
-- Utilizzare il software o il codice per scopi commerciali.
-- Decompilare, disassemblare o effettuare reverse engineering.
-- Rimuovere o alterare le informazioni di copyright.
+RESTRICTIONS
+Without the prior written consent of the Author, it is strictly
+prohibited to:
+- Copy, reproduce, distribute or redistribute the source code
+  or any part of it, in any form or by any means.
+- Modify, adapt, translate or create derivative works.
+- Use the software or code for commercial purposes.
+- Decompile, disassemble or reverse engineer the software.
+- Remove or alter copyright information.
 
-FINALITA CONSENTITE
-Il presente software e sviluppato esclusivamente per:
-- Ricerca accademica e scientifica
-- Testing di sicurezza in ambienti controllati e autorizzati
-- Dimostrazione didattica delle capacita di integrazione AI-Cybersecurity
+PERMITTED USE
+This software is developed exclusively for:
+- Academic and scientific research
+- Security testing in controlled and authorized environments
+- Educational demonstration of AI-Cybersecurity integration
 
-ESCLUSIONE DI RESPONSABILITA
-Il software e fornito cosi com e (AS IS), senza garanzie di alcun
-tipo, esplicite o implicite. L Autore non sara responsabile per
-qualsiasi danno derivante dall uso improprio o non autorizzato del
-software. L utente e l unico responsabile dell uso conforme alle
-leggi vigenti nel proprio Paese.
+DISCLAIMER
+The software is provided "AS IS", without warranties of any kind,
+express or implied. The Author shall not be liable for any damage
+arising from improper or unauthorized use of the software. The user
+is solely responsible for compliance with applicable laws in their
+country.
 
-AVVERTENZA LEGALE
-Qualsiasi uso non autorizzato del presente software costituisce
-violazione del diritto d autore ai sensi della Legge 22 aprile 1941
-n. 633 (Legge sul Diritto d Autore italiana), del Regolamento (UE)
-2017/1001 e delle convenzioni internazionali applicabili, e sara
-perseguito nelle sedi competenti.
+LEGAL NOTICE
+Any unauthorized use of this software constitutes a violation of
+copyright law under Italian Law No. 633 of April 22, 1941,
+EU Regulation 2017/1001 and applicable international conventions,
+and will be prosecuted in the competent courts.
 
-CONTATTI
+CONTACT
 Antonio Telesca
 Email: antoniotelesca503@gmail.com
 GitHub: https://github.com/TelescaAntonio
 
-Per richieste di licenza, collaborazioni accademiche o autorizzazioni
-contattare l Autore all indirizzo email sopra indicato.
+For licensing requests, academic collaborations or authorizations,
+please contact the Author at the email address above.

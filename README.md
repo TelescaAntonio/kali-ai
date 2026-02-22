@@ -6,33 +6,34 @@ Powered by Claude Opus 4.6 (Anthropic)
 
 Copyright 2026 Antonio Telesca - All Rights Reserved
 
-## AVVERTENZA LEGALE
+## Legal Notice
 
-Questo software e protetto da copyright. Tutti i diritti sono riservati.
-L uso e consentito esclusivamente per ricerca accademica e testing in ambienti autorizzati.
-Leggere il file LICENSE prima di qualsiasi utilizzo.
+This software is protected by copyright. All rights reserved.
+Use is permitted exclusively for academic research and testing
+in authorized environments.
+Read the LICENSE file before any use.
 
-## Caratteristiche
+## Features
 
-- Ciclo Cognitivo: OBSERVE - THINK - PLAN - ACT - VERIFY - LEARN
-- Esecuzione multi-terminale parallela (agenti autonomi)
-- Visualizzazione ragionamento AI in tempo reale (Neural Core + Matrix)
-- Penetration testing autonomo in 4 fasi
-- Database vulnerabilita con analisi AI
-- Memoria persistente e apprendimento tra sessioni
-- Installazione automatica tool mancanti
-- Monitoraggio sistema, ricognizione rete, controllo servizi
-- Generazione automatica report Markdown
-- Funzione export tesi
+- Cognitive Cycle: OBSERVE - THINK - PLAN - ACT - VERIFY - LEARN
+- Multi-terminal parallel execution (autonomous agents)
+- Real-time AI reasoning visualization (Neural Core + Matrix effect)
+- Autonomous 4-phase penetration testing
+- Vulnerability database with AI analysis
+- Persistent memory and learning across sessions
+- Auto-install missing tools (apt/pip/git)
+- System monitoring, network recon, service control
+- Automatic Markdown report generation
+- Thesis export function
 
-## Requisiti
+## Requirements
 
 - Kali Linux Rolling
-- API Key Anthropic (Claude Opus 4.6)
-- Connessione internet
+- Anthropic API Key (Claude Opus 4.6)
+- Internet connection
 - jq, nmap, cmatrix, inotify-tools
 
-## Installazione
+## Installation
 
     git clone https://github.com/TelescaAntonio/kali-ai.git
     cd kali-ai
@@ -40,25 +41,25 @@ Leggere il file LICENSE prima di qualsiasi utilizzo.
     chmod 600 ~/.kali_ai_config
     bash kali-ai.sh
 
-## Comandi
+## Commands
 
-    help             Mostra comandi disponibili
-    pentest target   Avvia pentest autonomo
-    report           Genera report sistema
-    benchmark target Confronto AI vs tradizionale
-    export_thesis    Esporta materiale tesi
-    snapshot         Stato sistema
-    monitor          Risorse sistema
-    stats            Statistiche utilizzo
-    exit             Esci
+    help             Show available commands
+    pentest target   Start autonomous pentest
+    report           Generate system report
+    benchmark target AI vs traditional comparison
+    export_thesis    Export thesis materials
+    snapshot         System status
+    monitor          System resources
+    stats            Usage statistics
+    exit             Quit
 
-## Licenza
+## License
 
-Copyright 2026 Antonio Telesca. Tutti i diritti riservati.
-Vedere il file LICENSE per i dettagli completi.
+Copyright 2026 Antonio Telesca. All Rights Reserved.
+See the LICENSE file for full details.
 
-## Contatti
+## Contact
 
-Autore: Antonio Telesca
+Author: Antonio Telesca
 Email: antoniotelesca503@gmail.com
 GitHub: https://github.com/TelescaAntonio
