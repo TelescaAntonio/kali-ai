@@ -9,8 +9,7 @@ Copyright 2026 Antonio Telesca - All Rights Reserved
 ## AVVERTENZA LEGALE
 
 Questo software e protetto da copyright. Tutti i diritti sono riservati.
-L uso e consentito esclusivamente per ricerca accademica, programmi
-Horizon Europe e testing in ambienti autorizzati.
+L uso e consentito esclusivamente per ricerca accademica e testing in ambienti autorizzati.
 Leggere il file LICENSE prima di qualsiasi utilizzo.
 
 ## Caratteristiche
