@@ -2,7 +2,6 @@
 
 Autonomous AI-Powered Penetration Testing Agent for Kali Linux
 
-![Kali-AI v6.0 Screenshot](screenshots/kali-ai-v6.jpg)
 
 Copyright 2026 Antonio Telesca - All Rights Reserved
 
