@@ -92,8 +92,8 @@ See the LICENSE file for full details.
 
 ## Publication
 
-DOI: 10.13140/RG.2.2.27473.39524
-ResearchGate: https://www.researchgate.net/publication/401050676
+DOI: 10.13140/RG.2.2.15729.34401
+ResearchGate: https://www.researchgate.net/publication/401050851
 
 ## Contact
 
