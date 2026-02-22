@@ -90,6 +90,11 @@ To manually start/stop the bot:
 Copyright 2026 Antonio Telesca. All Rights Reserved.
 See the LICENSE file for full details.
 
+## Publication
+
+DOI: 10.13140/RG.2.2.27473.39524
+ResearchGate: https://www.researchgate.net/publication/389188285
+
 ## Contact
 
 Author: Antonio Telesca
