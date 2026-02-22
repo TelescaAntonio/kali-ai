@@ -1,21 +1,46 @@
-MIT License
+Copyright (c) 2026 Antonio Telesca. All Rights Reserved.
 
-Copyright (c) 2024 Antonio Telesca
+KALI-AI v6.0 - Cognitive Pentest Framework
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+TUTTI I DIRITTI RISERVATI / ALL RIGHTS RESERVED
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Il presente software e la relativa documentazione sono di proprieta
+esclusiva di Antonio Telesca (di seguito "l Autore").
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+DIVIETI
+E severamente vietato, senza il previo consenso scritto dell Autore:
+- Copiare, riprodurre, distribuire o redistribuire il codice sorgente
+  o parti di esso, in qualsiasi forma o con qualsiasi mezzo.
+- Modificare, adattare, tradurre o creare opere derivate.
+- Utilizzare il software o il codice per scopi commerciali.
+- Decompilare, disassemblare o effettuare reverse engineering.
+- Rimuovere o alterare le informazioni di copyright.
+
+FINALITA CONSENTITE
+Il presente software e sviluppato esclusivamente per:
+- Ricerca accademica e scientifica
+- Sperimentazione nell ambito dei programmi Horizon Europe
+- Testing di sicurezza in ambienti controllati e autorizzati
+- Dimostrazione didattica delle capacita di integrazione AI-Cybersecurity
+
+ESCLUSIONE DI RESPONSABILITA
+Il software e fornito cosi com e (AS IS), senza garanzie di alcun
+tipo, esplicite o implicite. L Autore non sara responsabile per
+qualsiasi danno derivante dall uso improprio o non autorizzato del
+software. L utente e l unico responsabile dell uso conforme alle
+leggi vigenti nel proprio Paese.
+
+AVVERTENZA LEGALE
+Qualsiasi uso non autorizzato del presente software costituisce
+violazione del diritto d autore ai sensi della Legge 22 aprile 1941
+n. 633 (Legge sul Diritto d Autore italiana), del Regolamento (UE)
+2017/1001 e delle convenzioni internazionali applicabili, e sara
+perseguito nelle sedi competenti.
+
+CONTATTI
+Antonio Telesca
+Email: antoniotelesca503@gmail.com
+GitHub: https://github.com/TelescaAntonio
+
+Per richieste di licenza, collaborazioni accademiche o autorizzazioni
+contattare l Autore all indirizzo email sopra indicato.
