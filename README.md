@@ -13,6 +13,28 @@ Use is permitted exclusively for academic research and testing
 in authorized environments.
 Read the LICENSE file before any use.
 
+![Kali-AI v6.0 Screenshot](screenshots/kali-ai-v6.jpg)
+
+![Kali-AI Telegram Control](screenshots/kali-ai-telegram.jpg)
+
+## Telegram Remote Control
+
+Kali-AI can be controlled remotely via Telegram bot.
+Send commands from your phone to your Kali Linux system.
+
+Available Telegram commands:
+
+    /status     - System status
+    /ip         - Show IP addresses
+    /scan       - Network scan
+    /exec       - Execute command
+    /ai         - Ask the AI
+    /services   - Active services
+    /disk       - Disk space
+    /ram        - RAM usage
+    /ports      - Open ports
+    /screenshot - Desktop screenshot
+
 ## Features
 
 - Cognitive Cycle: OBSERVE - THINK - PLAN - ACT - VERIFY - LEARN
