@@ -2,8 +2,6 @@
 
 Autonomous AI-Powered Penetration Testing Agent for Kali Linux
 
-Powered by Claude Opus 4.6 (Anthropic)
-
 ![Kali-AI v6.0 Screenshot](screenshots/kali-ai-v6.jpg)
 
 Copyright 2026 Antonio Telesca - All Rights Reserved
