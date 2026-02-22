@@ -34,6 +34,17 @@ Available Telegram commands:
     /ports      - Open ports
     /screenshot - Desktop screenshot
 
+## Auto-Start
+
+The Telegram bot starts automatically when Kali Linux boots.
+No need to keep a terminal open. The bot runs in background
+and remains active even after closing the terminal.
+
+To manually start/stop the bot:
+
+    nohup python3 ~/kali-ai/telegram_bot.py > /tmp/telegram_bot.log 2>&1 &
+    pkill -f telegram_bot.py
+
 ## Features
 
 - Cognitive Cycle: OBSERVE - THINK - PLAN - ACT - VERIFY - LEARN
