@@ -98,5 +98,5 @@ ResearchGate: https://www.researchgate.net/publication/401050851
 ## Contact
 
 Author: Antonio Telesca
-Email: antoniotelesca503@gmail.com
+Email: antonio.telesca@irst-institute.eu
 GitHub: https://github.com/TelescaAntonio
