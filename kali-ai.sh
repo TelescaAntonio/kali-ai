@@ -1,16 +1,16 @@
 #!/bin/bash
 
 # ╔═══════════════════════════════════════════════════════════════╗
-# ║  🤖 KALI-AI v6.0 - COGNITIVE PENTEST FRAMEWORK                ║
+# ║  🤖 KALI-AI v7.0 - COGNITIVE PENTEST FRAMEWORK                ║
 # ║  Creato da Antonio Telesca                                    ║
 # ║  GitHub: https://github.com/TelescaAntonio/kali-ai            ║
 # ║  Powered by Claude Opus 4.6 (Anthropic)                      ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
 AUTHOR="Antonio Telesca"
-VERSION="6.0"
+VERSION="7.0"
 GITHUB_REPO="https://github.com/TelescaAntonio/kali-ai"
-EMAIL="antoniotelesca503@gmail.com"
+EMAIL="antonio.telesca@irst-institute.eu"
 
 if [[ -f "$HOME/.kali_ai_config" ]]; then
     source "$HOME/.kali_ai_config"
@@ -1342,7 +1342,11 @@ autonomous_command() {
         "pentest_enum") pentest_phase3_enum "$1" ;;
         "pentest_analyze") pentest_phase4_analyze "$1" ;;
         "pentest_report") pentest_generate_report "$1" ;;
+        mitre_analyze_scan "$PENTEST_RESULTS_DIR/scan/ports_*.txt"
         "benchmark") benchmark_test "$1" ;;
+        "mitre") mitre_analyze_scan "$1" "$2" ;;
+        "cve") cve_lookup "$1" "$2" ;;
+        "cve_scan") cve_scan_from_nmap "$1" ;;
         "export_thesis") export_thesis ;;
         *) echo -e "${YELLOW}⚠️ $action non riconosciuto${RESET}" ;;
     esac
@@ -1372,7 +1376,7 @@ process_conversation() {
     think_thought "Analizzo richiesta utente..."
     think_observe "Stato sistema: RAM=$(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}')"
     
-    local context="Sei KALI-AI v6.0, un COGNITIVE PENTEST FRAMEWORK per Kali Linux creato da Antonio Telesca.
+    local context="Sei KALI-AI v7.0, un COGNITIVE PENTEST FRAMEWORK per Kali Linux creato da Antonio Telesca.
 Powered by Claude Opus 4.6. HAI IL CONTROLLO COMPLETO DEL SISTEMA.
 
 STATO: $snap
@@ -1465,7 +1469,7 @@ handle_special_commands() {
         "clear"|"c") clear; return 0 ;;
         "help"|"h"|"aiuto")
             echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════╗${RESET}"
-            echo -e "${CYAN}║  🤖 KALI-AI v6.0 — COGNITIVE PENTEST FRAMEWORK                ║${RESET}"
+            echo -e "${CYAN}║  🤖 KALI-AI v7.0 — COGNITIVE PENTEST FRAMEWORK                ║${RESET}"
             echo -e "${CYAN}╠═══════════════════════════════════════════════════════════════╣${RESET}"
             echo -e "${CYAN}║${RESET}  🗣️  Parla naturalmente!                                     ${CYAN}║${RESET}"
             echo -e "${CYAN}║${RESET}                                                              ${CYAN}║${RESET}"
@@ -1519,7 +1523,7 @@ main() {
     clear
     echo -e "${RED}"
     echo "╔═══════════════════════════════════════════════════════════════╗"
-    echo "║  🤖 KALI-AI v6.0 — COGNITIVE PENTEST FRAMEWORK                ║"
+    echo "║  🤖 KALI-AI v7.0 — COGNITIVE PENTEST FRAMEWORK                ║"
     echo "║        Powered by Claude Opus 4.6 (Anthropic)                 ║"
     echo "║           Reasoning Engine + Multi-Agent System               ║"
     echo "║              Creato da Antonio Telesca                        ║"
@@ -1538,7 +1542,7 @@ main() {
     start_thought_terminal
     sleep 1
     
-    think_phase "KALI-AI v6.0 INIZIALIZZATO"
+    think_phase "KALI-AI v7.0 INIZIALIZZATO"
     think_thought "Sistema operativo: $(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d'\"' -f2)"
     think_thought "Modello AI: $MODEL"
     think_thought "RAM: $(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}')"
@@ -1562,3 +1566,398 @@ main() {
 }
 
 main
+
+# ═══════════════════════════════════════════════════════════════
+# FASE 16: MITRE ATT&CK MAPPING ENGINE
+# ═══════════════════════════════════════════════════════════════
+
+MITRE_DB="$HOME/kali-ai/mitre_attack.json"
+
+mitre_map_tool() {
+    local tool="$1"
+    local results=""
+    if [[ -f "$MITRE_DB" ]]; then
+        results=$(jq -r --arg t "$tool" '
+            [.. | objects | select(.tools? // [] | index($t)) | 
+            {id: (input_line_number | tostring), name: .name, tactic: .tactic}] | 
+            .[] | "\(.tactic) | \(.name)"
+        ' "$MITRE_DB" 2>/dev/null)
+        
+        if [[ -z "$results" ]]; then
+            results=$(grep -l "\"$tool\"" "$MITRE_DB" 2>/dev/null | head -1)
+            if [[ -n "$results" ]]; then
+                results=$(jq -r --arg t "$tool" '
+                    .. | objects | select(.tools? // [] | index($t)) | 
+                    "\(.tactic) → \(.name)"
+                ' "$MITRE_DB" 2>/dev/null)
+            fi
+        fi
+    fi
+    echo "$results"
+}
+
+mitre_analyze_scan() {
+    local scan_file="$1"
+    local report_file="${2:-$REPORTS_DIR/mitre_mapping_$(date +%Y%m%d_%H%M%S).md}"
+    
+    think_phase "MITRE ATT&CK MAPPING"
+    think_thought "Analizzo risultati scan e mappo a MITRE ATT&CK..."
+    
+    local open_ports=""
+    local services=""
+    
+    if [[ -f "$scan_file" ]]; then
+        open_ports=$(grep -E "^[0-9]+/" "$scan_file" 2>/dev/null | grep "open")
+        services=$(grep -oP '(?<=open\s{1,10})\S+' "$scan_file" 2>/dev/null | sort -u)
+    fi
+    
+    cat > "$report_file" << MEOF
+# 🎯 MITRE ATT&CK Mapping Report
+## Kali-AI v$VERSION — Cognitive Pentest Framework
+**Data:** $(date)
+**Scan File:** $scan_file
+
+---
+
+## Tecniche Identificate
+
+| MITRE ID | Tecnica | Tattica | Tool Utilizzato | Evidenza |
+|----------|---------|---------|-----------------|----------|
+MEOF
+
+    local technique_count=0
+    
+    # Map nmap usage
+    if grep -q "nmap" "$scan_file" 2>/dev/null || [[ -n "$open_ports" ]]; then
+        echo "| T1595 | Active Scanning | Reconnaissance | nmap | Port scan eseguito |" >> "$report_file"
+        echo "| T1046 | Network Service Discovery | Discovery | nmap | Servizi identificati |" >> "$report_file"
+        echo "| T1592 | Gather Victim Host Information | Reconnaissance | nmap | OS/Version detection |" >> "$report_file"
+        technique_count=$((technique_count + 3))
+        think_observe "MITRE: T1595, T1046, T1592 — Scansione attiva identificata"
+    fi
+    
+    # Map service-specific techniques
+    if echo "$services" | grep -qi "http\|https\|web"; then
+        echo "| T1190 | Exploit Public-Facing Application | Initial Access | nikto/dirb | Servizio web trovato |" >> "$report_file"
+        technique_count=$((technique_count + 1))
+        think_observe "MITRE: T1190 — Applicazione web esposta"
+    fi
+    
+    if echo "$services" | grep -qi "ssh"; then
+        echo "| T1133 | External Remote Services | Initial Access | ssh | SSH aperto |" >> "$report_file"
+        echo "| T1021 | Remote Services | Lateral Movement | ssh | Accesso remoto possibile |" >> "$report_file"
+        echo "| T1110 | Brute Force | Credential Access | hydra | Target per brute force |" >> "$report_file"
+        technique_count=$((technique_count + 3))
+        think_observe "MITRE: T1133, T1021, T1110 — SSH esposto"
+    fi
+    
+    if echo "$services" | grep -qi "smb\|microsoft-ds\|netbios"; then
+        echo "| T1135 | Network Share Discovery | Discovery | enum4linux | SMB attivo |" >> "$report_file"
+        echo "| T1087 | Account Discovery | Discovery | enum4linux | Enumerazione account |" >> "$report_file"
+        echo "| T1039 | Data from Network Shared Drive | Collection | smbclient | Share accessibili |" >> "$report_file"
+        technique_count=$((technique_count + 3))
+        think_observe "MITRE: T1135, T1087, T1039 — SMB esposto"
+    fi
+    
+    if echo "$services" | grep -qi "ftp"; then
+        echo "| T1078 | Valid Accounts | Initial Access | ftp | FTP aperto, check anonymous |" >> "$report_file"
+        technique_count=$((technique_count + 1))
+        think_observe "MITRE: T1078 — FTP esposto"
+    fi
+    
+    if echo "$services" | grep -qi "rdp\|ms-wbt"; then
+        echo "| T1133 | External Remote Services | Initial Access | rdp | RDP esposto |" >> "$report_file"
+        echo "| T1110 | Brute Force | Credential Access | hydra | Target RDP brute force |" >> "$report_file"
+        technique_count=$((technique_count + 2))
+        think_observe "MITRE: T1133, T1110 — RDP esposto"
+    fi
+    
+    if echo "$services" | grep -qi "snmp"; then
+        echo "| T1082 | System Information Discovery | Discovery | snmp-check | SNMP esposto |" >> "$report_file"
+        technique_count=$((technique_count + 1))
+        think_observe "MITRE: T1082 — SNMP esposto"
+    fi
+
+    cat >> "$report_file" << MEOF2
+
+---
+
+## Sommario
+- **Tecniche ATT&CK identificate:** $technique_count
+- **Servizi esposti:** $(echo "$services" | wc -w)
+- **Porte aperte:** $(echo "$open_ports" | grep -c "open")
+
+## Raccomandazioni Difensive
+$(if echo "$services" | grep -qi "ssh"; then echo "- **SSH:** Disabilitare accesso root, usare chiavi, fail2ban"; fi)
+$(if echo "$services" | grep -qi "http"; then echo "- **HTTP:** WAF, HTTPS enforcing, patching applicativo"; fi)
+$(if echo "$services" | grep -qi "smb"; then echo "- **SMB:** Disabilitare SMBv1, restringere share, autenticazione forte"; fi)
+$(if echo "$services" | grep -qi "ftp"; then echo "- **FTP:** Disabilitare anonymous, migrare a SFTP"; fi)
+$(if echo "$services" | grep -qi "rdp"; then echo "- **RDP:** NLA obbligatorio, VPN, limitare accesso IP"; fi)
+$(if echo "$services" | grep -qi "snmp"; then echo "- **SNMP:** Cambiare community string, usare SNMPv3"; fi)
+
+---
+*Report MITRE ATT&CK generato da Kali-AI v$VERSION*
+*Framework: MITRE ATT&CK v14 — https://attack.mitre.org*
+MEOF2
+
+    think_result "MITRE Mapping: $technique_count tecniche identificate → $report_file"
+    echo -e "${GREEN}🎯 MITRE ATT&CK: $technique_count tecniche mappate → $report_file${RESET}"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# FASE 17: ADVANCED MEMORY & LEARNING ENGINE
+# ═══════════════════════════════════════════════════════════════
+
+ATTACK_MEMORY="$BASE_DIR/attack_memory.json"
+STRATEGY_DB="$BASE_DIR/strategy_database.json"
+
+init_advanced_memory() {
+    if [[ ! -f "$ATTACK_MEMORY" ]]; then
+        echo '{"attacks":[],"successful_techniques":[],"failed_techniques":[],"target_profiles":[]}' > "$ATTACK_MEMORY"
+    fi
+    if [[ ! -f "$STRATEGY_DB" ]]; then
+        cat > "$STRATEGY_DB" << 'STRATEOF'
+{
+  "port_strategies": {
+    "21": {"service":"FTP","priority":"high","actions":["anonymous_login","version_check","brute_force"],"tools":["ftp","nmap","hydra"]},
+    "22": {"service":"SSH","priority":"high","actions":["version_check","key_auth_test","brute_force"],"tools":["ssh","nmap","hydra","ssh-audit"]},
+    "23": {"service":"Telnet","priority":"critical","actions":["banner_grab","brute_force"],"tools":["telnet","nmap","hydra"]},
+    "25": {"service":"SMTP","priority":"medium","actions":["user_enum","relay_test"],"tools":["smtp-user-enum","nmap","swaks"]},
+    "53": {"service":"DNS","priority":"medium","actions":["zone_transfer","enum"],"tools":["dig","dnsrecon","dnsenum"]},
+    "80": {"service":"HTTP","priority":"high","actions":["dir_scan","vuln_scan","tech_detect"],"tools":["nikto","dirb","whatweb","gobuster"]},
+    "110": {"service":"POP3","priority":"medium","actions":["version_check","brute_force"],"tools":["nmap","hydra"]},
+    "111": {"service":"RPCbind","priority":"medium","actions":["rpc_enum"],"tools":["rpcinfo","nmap"]},
+    "135": {"service":"MSRPC","priority":"high","actions":["rpc_enum"],"tools":["rpcdump","nmap"]},
+    "139": {"service":"NetBIOS","priority":"high","actions":["smb_enum","share_enum"],"tools":["enum4linux","smbclient","nbtscan"]},
+    "143": {"service":"IMAP","priority":"medium","actions":["version_check","brute_force"],"tools":["nmap","hydra"]},
+    "443": {"service":"HTTPS","priority":"high","actions":["ssl_check","dir_scan","vuln_scan"],"tools":["sslscan","nikto","dirb","testssl.sh"]},
+    "445": {"service":"SMB","priority":"critical","actions":["smb_enum","share_enum","vuln_check"],"tools":["enum4linux","smbclient","crackmapexec","nmap"]},
+    "993": {"service":"IMAPS","priority":"low","actions":["version_check"],"tools":["nmap","openssl"]},
+    "1433": {"service":"MSSQL","priority":"critical","actions":["brute_force","enum"],"tools":["nmap","hydra","sqsh"]},
+    "1521": {"service":"Oracle","priority":"critical","actions":["sid_enum","brute_force"],"tools":["odat","nmap","hydra"]},
+    "3306": {"service":"MySQL","priority":"critical","actions":["version_check","brute_force"],"tools":["mysql","nmap","hydra"]},
+    "3389": {"service":"RDP","priority":"critical","actions":["nla_check","brute_force"],"tools":["nmap","hydra","xfreerdp"]},
+    "5432": {"service":"PostgreSQL","priority":"high","actions":["version_check","brute_force"],"tools":["psql","nmap","hydra"]},
+    "5900": {"service":"VNC","priority":"high","actions":["auth_check","brute_force"],"tools":["nmap","hydra","vncviewer"]},
+    "6379": {"service":"Redis","priority":"critical","actions":["noauth_check","info"],"tools":["redis-cli","nmap"]},
+    "8080": {"service":"HTTP-Proxy","priority":"high","actions":["dir_scan","vuln_scan"],"tools":["nikto","dirb","whatweb"]},
+    "8443": {"service":"HTTPS-Alt","priority":"high","actions":["ssl_check","dir_scan"],"tools":["sslscan","nikto","dirb"]},
+    "27017": {"service":"MongoDB","priority":"critical","actions":["noauth_check","enum"],"tools":["mongosh","nmap"]}
+  }
+}
+STRATEOF
+    fi
+    think_thought "Advanced Memory Engine inizializzato"
+}
+
+memory_record_attack() {
+    local target="$1"
+    local technique="$2"
+    local tool="$3"
+    local success="$4"
+    local details="$5"
+    
+    local entry=$(jq -cn \
+        --arg t "$target" \
+        --arg tech "$technique" \
+        --arg tool "$tool" \
+        --arg s "$success" \
+        --arg d "$details" \
+        --arg date "$(date -Iseconds)" \
+        '{target:$t, technique:$tech, tool:$tool, success:($s=="true"), details:$d, date:$date}')
+    
+    local mem=$(cat "$ATTACK_MEMORY")
+    echo "$mem" | jq --argjson e "$entry" '.attacks += [$e]' > "$ATTACK_MEMORY"
+    
+    if [[ "$success" == "true" ]]; then
+        echo "$mem" | jq --arg tech "$technique" \
+            'if (.successful_techniques | index($tech)) then . else .successful_techniques += [$tech] end' > "$ATTACK_MEMORY"
+        think_learn "Tecnica $technique registrata come SUCCESSO"
+    else
+        echo "$mem" | jq --arg tech "$technique" \
+            'if (.failed_techniques | index($tech)) then . else .failed_techniques += [$tech] end' > "$ATTACK_MEMORY"
+        think_learn "Tecnica $technique registrata come FALLITA"
+    fi
+}
+
+memory_get_strategy() {
+    local port="$1"
+    if [[ -f "$STRATEGY_DB" ]]; then
+        local strategy=$(jq -r --arg p "$port" '.port_strategies[$p] // empty' "$STRATEGY_DB")
+        if [[ -n "$strategy" ]]; then
+            local service=$(echo "$strategy" | jq -r '.service')
+            local priority=$(echo "$strategy" | jq -r '.priority')
+            local actions=$(echo "$strategy" | jq -r '.actions | join(", ")')
+            local tools=$(echo "$strategy" | jq -r '.tools | join(", ")')
+            think_strategy "Porta $port → $service [Priorità: $priority]"
+            think_strategy "Azioni: $actions"
+            think_strategy "Tools: $tools"
+            echo "$strategy"
+        fi
+    fi
+}
+
+memory_analyze_target_profile() {
+    local target="$1"
+    local scan_file="$2"
+    
+    think_phase "ANALISI PROFILO TARGET"
+    
+    local profile="unknown"
+    local open_ports=$(grep -oP '^\d+' "$scan_file" 2>/dev/null | sort -n)
+    local port_count=$(echo "$open_ports" | grep -c "." 2>/dev/null || echo 0)
+    
+    if echo "$open_ports" | grep -q "^80$\|^443$\|^8080$"; then
+        profile="web_server"
+        think_observe "Profilo: WEB SERVER"
+    fi
+    if echo "$open_ports" | grep -q "^445$\|^139$\|^135$"; then
+        profile="windows_host"
+        think_observe "Profilo: WINDOWS HOST"
+    fi
+    if echo "$open_ports" | grep -q "^22$" && ! echo "$open_ports" | grep -q "^445$"; then
+        profile="linux_host"
+        think_observe "Profilo: LINUX HOST"
+    fi
+    if echo "$open_ports" | grep -q "^3306$\|^5432$\|^1433$\|^27017$\|^6379$"; then
+        profile="database_server"
+        think_observe "Profilo: DATABASE SERVER"
+    fi
+    
+    local target_entry=$(jq -cn \
+        --arg t "$target" \
+        --arg p "$profile" \
+        --arg pc "$port_count" \
+        --arg ports "$(echo $open_ports | tr '\n' ',')" \
+        --arg date "$(date -Iseconds)" \
+        '{target:$t, profile:$p, port_count:($pc|tonumber), ports:$ports, date:$date}')
+    
+    local mem=$(cat "$ATTACK_MEMORY")
+    echo "$mem" | jq --argjson e "$target_entry" '.target_profiles += [$e]' > "$ATTACK_MEMORY"
+    
+    think_result "Target $target classificato come: $profile ($port_count porte)"
+    echo "$profile"
+}
+
+memory_suggest_next_action() {
+    local target="$1"
+    local current_phase="$2"
+    
+    think_phase "AI STRATEGY SUGGESTION"
+    
+    local past_successes=$(jq -r '.successful_techniques | join(", ")' "$ATTACK_MEMORY" 2>/dev/null)
+    local past_failures=$(jq -r '.failed_techniques | join(", ")' "$ATTACK_MEMORY" 2>/dev/null)
+    
+    if [[ -n "$past_successes" ]]; then
+        think_learn "Tecniche vincenti passate: $past_successes"
+    fi
+    if [[ -n "$past_failures" ]]; then
+        think_learn "Tecniche fallite passate: $past_failures — evito di ripetere"
+    fi
+    
+    think_decide "Suggerisco strategia basata su esperienza accumulata"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# FASE 18: CVE LOOKUP ENGINE
+# ═══════════════════════════════════════════════════════════════
+
+cve_lookup() {
+    local service="$1"
+    local version="$2"
+    local output_file="${3:-}"
+    
+    think_phase "CVE LOOKUP: $service $version"
+    think_thought "Interrogo database CVE per vulnerabilità note..."
+    
+    local query="${service}+${version}"
+    local cve_results=""
+    
+    # NVD NIST API (gratuita, no API key)
+    cve_results=$(curl -s --max-time 15 \
+        "https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch=${query}&resultsPerPage=10" 2>/dev/null)
+    
+    if [[ -n "$cve_results" ]] && echo "$cve_results" | jq -e '.vulnerabilities' &>/dev/null; then
+        local total=$(echo "$cve_results" | jq '.totalResults // 0')
+        think_observe "Trovate $total CVE per $service $version"
+        
+        local cve_report=""
+        cve_report=$(echo "$cve_results" | jq -r '
+            .vulnerabilities[:10][] | 
+            "| " + (.cve.id // "N/A") + 
+            " | " + ((.cve.metrics.cvssMetricV31[0].cvssData.baseScore // .cve.metrics.cvssMetricV2[0].cvssData.baseScore // 0) | tostring) +
+            " | " + ((.cve.metrics.cvssMetricV31[0].cvssData.baseSeverity // .cve.metrics.cvssMetricV2[0].baseSeverity // "N/A") | tostring) +
+            " | " + (.cve.descriptions[0].value // "N/A" | .[0:80]) + " |"
+        ' 2>/dev/null)
+        
+        if [[ -n "$cve_report" ]]; then
+            echo -e "${RED}🔴 CVE trovate per $service $version:${RESET}"
+            echo ""
+            echo "| CVE ID | CVSS | Severity | Descrizione |"
+            echo "|--------|------|----------|-------------|"
+            echo "$cve_report"
+            echo ""
+            
+            if [[ -n "$output_file" ]]; then
+                echo "## CVE per $service $version" >> "$output_file"
+                echo "| CVE ID | CVSS | Severity | Descrizione |" >> "$output_file"
+                echo "|--------|------|----------|-------------|" >> "$output_file"
+                echo "$cve_report" >> "$output_file"
+                echo "" >> "$output_file"
+            fi
+            
+            # Conta CVE critiche
+            local critical=$(echo "$cve_results" | jq '[.vulnerabilities[] | select((.cve.metrics.cvssMetricV31[0].cvssData.baseScore // 0) >= 9.0)] | length' 2>/dev/null || echo 0)
+            local high=$(echo "$cve_results" | jq '[.vulnerabilities[] | select((.cve.metrics.cvssMetricV31[0].cvssData.baseScore // 0) >= 7.0 and (.cve.metrics.cvssMetricV31[0].cvssData.baseScore // 0) < 9.0)] | length' 2>/dev/null || echo 0)
+            
+            [[ $critical -gt 0 ]] && think_observe "⚠️ CRITICAL: $critical CVE con CVSS >= 9.0!"
+            [[ $high -gt 0 ]] && think_observe "🔴 HIGH: $high CVE con CVSS >= 7.0"
+            
+            think_result "CVE Lookup: $total risultati per $service $version"
+        else
+            think_result "Nessuna CVE formattabile trovata"
+        fi
+    else
+        think_thought "Nessuna risposta dal database NVD per $service $version"
+        echo -e "${YELLOW}⚠️ Nessuna CVE trovata per $service $version${RESET}"
+    fi
+}
+
+cve_scan_from_nmap() {
+    local scan_file="$1"
+    local report_file="$REPORTS_DIR/cve_report_$(date +%Y%m%d_%H%M%S).md"
+    
+    think_phase "CVE SCAN AUTOMATICO"
+    think_thought "Estraggo servizi e versioni dal scan nmap..."
+    
+    cat > "$report_file" << CVEHEAD
+# 🔴 CVE Vulnerability Report
+## Kali-AI v$VERSION — Cognitive Pentest Framework
+**Data:** $(date)
+**Scan File:** $scan_file
+
+---
+
+CVEHEAD
+    
+    local total_cve=0
+    
+    while IFS= read -r line; do
+        local port=$(echo "$line" | grep -oP '^\d+')
+        local service=$(echo "$line" | awk '{print $3}')
+        local version=$(echo "$line" | grep -oP '(?<=\s)\S+\s+\S+$' | sed 's/^ *//')
+        
+        if [[ -n "$service" && -n "$version" && "$version" != "$service" ]]; then
+            think_agent "CVE Check: $service $version (porta $port)"
+            cve_lookup "$service" "$version" "$report_file"
+            total_cve=$((total_cve + 1))
+            sleep 1  # Rate limiting NVD API
+        fi
+    done < <(grep "open" "$scan_file" 2>/dev/null | grep -v "^#")
+    
+    echo "---" >> "$report_file"
+    echo "*Report CVE generato da Kali-AI v$VERSION*" >> "$report_file"
+    
+    think_result "CVE Scan completato: $total_cve servizi analizzati → $report_file"
+    echo -e "${GREEN}🔴 CVE Report: $report_file${RESET}"
+}

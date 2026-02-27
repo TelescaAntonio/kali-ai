@@ -1,0 +1,34 @@
+{
+  "reconnaissance": {
+    "T1595": {"name": "Active Scanning", "tactic": "Reconnaissance", "tools": ["nmap", "masscan"]},
+    "T1592": {"name": "Gather Victim Host Information", "tactic": "Reconnaissance", "tools": ["nmap", "whatweb"]},
+    "T1590": {"name": "Gather Victim Network Information", "tactic": "Reconnaissance", "tools": ["nmap", "arp-scan", "dns"]}
+  },
+  "initial_access": {
+    "T1190": {"name": "Exploit Public-Facing Application", "tactic": "Initial Access", "tools": ["nikto", "sqlmap", "dirb"]},
+    "T1133": {"name": "External Remote Services", "tactic": "Initial Access", "tools": ["ssh", "rdp", "vnc"]},
+    "T1078": {"name": "Valid Accounts", "tactic": "Initial Access", "tools": ["hydra", "medusa", "crackmapexec"]}
+  },
+  "discovery": {
+    "T1046": {"name": "Network Service Discovery", "tactic": "Discovery", "tools": ["nmap", "masscan"]},
+    "T1135": {"name": "Network Share Discovery", "tactic": "Discovery", "tools": ["enum4linux", "smbclient"]},
+    "T1087": {"name": "Account Discovery", "tactic": "Discovery", "tools": ["enum4linux", "ldapsearch"]},
+    "T1082": {"name": "System Information Discovery", "tactic": "Discovery", "tools": ["nmap", "snmp-check"]}
+  },
+  "credential_access": {
+    "T1110": {"name": "Brute Force", "tactic": "Credential Access", "tools": ["hydra", "medusa", "john"]},
+    "T1212": {"name": "Exploitation for Credential Access", "tactic": "Credential Access", "tools": ["responder", "mimikatz"]}
+  },
+  "lateral_movement": {
+    "T1021": {"name": "Remote Services", "tactic": "Lateral Movement", "tools": ["ssh", "psexec", "evil-winrm"]},
+    "T1570": {"name": "Lateral Tool Transfer", "tactic": "Lateral Movement", "tools": ["scp", "smb"]}
+  },
+  "collection": {
+    "T1005": {"name": "Data from Local System", "tactic": "Collection", "tools": ["find", "grep"]},
+    "T1039": {"name": "Data from Network Shared Drive", "tactic": "Collection", "tools": ["smbclient", "mount"]}
+  },
+  "defense_evasion": {
+    "T1070": {"name": "Indicator Removal", "tactic": "Defense Evasion", "tools": ["shred", "logrotate"]},
+    "T1036": {"name": "Masquerading", "tactic": "Defense Evasion", "tools": ["mv", "cp"]}
+  }
+}
