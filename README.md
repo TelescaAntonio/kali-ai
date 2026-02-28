@@ -1,102 +1,76 @@
-# Kali-AI v6.0 - Cognitive Pentest Framework
+# Kali-AI v14.0
 
-Autonomous AI-Powered Penetration Testing Agent for Kali Linux
+[![Version](https://img.shields.io/badge/version-14.0-blue.svg)]()
+[![AI Engine](https://img.shields.io/badge/AI-Claude%20Opus%204.6-purple.svg)]()
+[![Lines](https://img.shields.io/badge/lines-6954-green.svg)]()
+[![Modules](https://img.shields.io/badge/modules-32-orange.svg)]()
 
+## Overview
 
-Copyright 2026 Antonio Telesca - All Rights Reserved
+Kali-AI is an autonomous AI framework for penetration testing,
+OSINT, criminal network investigation, crypto forensics, threat
+intelligence, and forensic reporting. Built on Claude Opus 4.6
+with the OTPAVL cognitive cycle. 6954 lines, 32 modules, 45+ tools.
 
-## Legal Notice
+## Capabilities
 
-This software is protected by copyright. All rights reserved.
-Use is permitted exclusively for academic research and testing
-in authorized environments.
-Read the LICENSE file before any use.
-
-![Kali-AI v6.0 Screenshot](screenshots/kali-ai-v6.jpg)
-
-![Kali-AI Telegram Control](screenshots/kali-ai-telegram.jpg)
-
-## Telegram Remote Control
-
-Kali-AI can be controlled remotely via Telegram bot.
-Send commands from your phone to your Kali Linux system.
-
-Available Telegram commands:
-
-    /status     - System status
-    /ip         - Show IP addresses
-    /scan       - Network scan
-    /exec       - Execute command
-    /ai         - Ask the AI
-    /services   - Active services
-    /disk       - Disk space
-    /ram        - RAM usage
-    /ports      - Open ports
-    /screenshot - Desktop screenshot
-
-## Auto-Start
-
-The Telegram bot starts automatically when Kali Linux boots.
-No need to keep a terminal open. The bot runs in background
-and remains active even after closing the terminal.
-
-To manually start/stop the bot:
-
-    nohup python3 ~/kali-ai/telegram_bot.py > /tmp/telegram_bot.log 2>&1 &
-    pkill -f telegram_bot.py
-
-## Features
-
-- Cognitive Cycle: OBSERVE - THINK - PLAN - ACT - VERIFY - LEARN
-- Multi-terminal parallel execution (autonomous agents)
-- Real-time AI reasoning visualization (Neural Core + Matrix effect)
-- Autonomous 4-phase penetration testing
-- Vulnerability database with AI analysis
-- Persistent memory and learning across sessions
-- Auto-install missing tools (apt/pip/git)
-- System monitoring, network recon, service control
-- Automatic Markdown report generation
-- Thesis export function
-
-## Requirements
-
-- Kali Linux Rolling
-- Anthropic API Key (Claude Opus 4.6)
-- Internet connection
-- jq, nmap, cmatrix, inotify-tools
+1. Cognitive AI Engine - Claude Opus 4.6, OTPAVL cycle, multi-agent
+2. Penetration Testing - MITRE ATT&CK v14, CVE lookup, risk scoring
+3. OSINT Engine - email, phone, social, WHOIS, DNS, subdomain
+4. Criminal Network Intelligence - graph analysis, entity tracking
+5. Crypto Forensics - ETH/BTC tracing, 40+ exchanges, mixer detection
+6. Threat Intelligence - AbuseIPDB, VirusTotal, AlienVault, Shodan
+7. Forensic Reports - law enforcement format, SHA-256 chain of custody
+8. Real-Time Monitoring - IP/domain/wallet surveillance daemon
 
 ## Installation
 
-    git clone https://github.com/TelescaAntonio/kali-ai.git
-    cd kali-ai
-    echo ANTHROPIC_API_KEY=your-key > ~/.kali_ai_config
-    chmod 600 ~/.kali_ai_config
-    bash kali-ai.sh
+git clone https://github.com/TelescaAntonio/kali-ai.git cd kali-ai chmod +x kali-ai.sh ./kali-ai.sh
 
-## Commands
+Requirements: Kali Linux, Bash 5+, jq, curl, Anthropic API key.
 
-    help             Show available commands
-    pentest target   Start autonomous pentest
-    report           Generate system report
-    benchmark target AI vs traditional comparison
-    export_thesis    Export thesis materials
-    snapshot         System status
-    monitor          System resources
-    stats            Usage statistics
-    exit             Quit
+## API Keys
+
+Create api_keys.json in the project folder with your keys for
+AbuseIPDB, VirusTotal, AlienVault OTX, and Shodan.
+
+## Usage Examples
+
+Start: ./kali-ai.sh
+Scan: scansiona 192.168.1.0/24
+OSINT: osint example.com
+Email investigation: investiga hacker@suspect.com
+CNI: cni suspect@email.com indagine frode
+Crypto: crypto_trace 0x742d35Cc... ETH 3
+Threat intel: threat_intel 185.220.101.45
+Forensic report: forensic_report "Caso" "Descrizione"
+Monitor: monitor_start 300
+
+## Research
+
+- DOI: 10.13140/RG.2.2.15729.34401
+- Patent: PCT WO2024018409
+- Horizon: HORIZON-CL3-2026-02-CS-ECCC-02
+
+## Version History
+
+- v14.0 Forensic Reports, Real-Time Monitoring
+- v13.0 Threat Intelligence Aggregator
+- v12.0 Criminal Network Intelligence, Crypto Forensics
+- v10.0 Email Forensics Investigation
+- v9.0 OSINT Engine, Web Vulnerability Scanner
+- v8.0 Auto-Install, Topology Mapper, Risk Scoring
+- v7.0 MITRE ATT&CK, CVE Lookup, Memory Engine
+- v6.0 Core framework, Claude Opus 4.6, OTPAVL
+
+## Author
+
+Antonio Telesca - AI Systems Engineer
+Email: antonio.telesca@irst-institute.eu
+GitHub: https://github.com/TelescaAntonio
+ORCID: https://orcid.org/0009-0003-3048-1044
+EU Expert ID: EX2026D1365471
 
 ## License
 
-Copyright 2026 Antonio Telesca. All Rights Reserved.
-See the LICENSE file for full details.
-
-## Publication
-
-DOI: 10.13140/RG.2.2.15729.34401
-ResearchGate: https://www.researchgate.net/publication/401050851
-
-## Contact
-
-Author: Antonio Telesca
-Email: antonio.telesca@irst-institute.eu
-GitHub: https://github.com/TelescaAntonio
+All Rights Reserved. For licensing: antonio.telesca@irst-institute.eu
