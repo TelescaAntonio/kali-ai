@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # ╔═══════════════════════════════════════════════════════════════╗
-# ║  🤖 KALI-AI v7.0 - COGNITIVE PENTEST FRAMEWORK                ║
+# ║  🤖 KALI-AI v8.0 - COGNITIVE PENTEST FRAMEWORK                ║
 # ║  Creato da Antonio Telesca                                    ║
 # ║  GitHub: https://github.com/TelescaAntonio/kali-ai            ║
 # ║  Powered by Claude Opus 4.6 (Anthropic)                      ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
 AUTHOR="Antonio Telesca"
-VERSION="7.0"
+VERSION="8.0"
 GITHUB_REPO="https://github.com/TelescaAntonio/kali-ai"
 EMAIL="antonio.telesca@irst-institute.eu"
 
@@ -1347,6 +1347,16 @@ autonomous_command() {
         "mitre") mitre_analyze_scan "$1" "$2" ;;
         "cve") cve_lookup "$1" "$2" ;;
         "cve_scan") cve_scan_from_nmap "$1" ;;
+        "topology") network_topology_map "$1" ;;
+        "risk_score") risk_score_target "$1" ;;
+        "exploit_search") exploit_search "$1" "$2" ;;
+        "exploit_scan") exploit_scan_from_nmap "$1" ;;
+        "attack_chain") generate_attack_chain "$1" ;;
+        "credentials") credential_harvest "$1" ;;
+        "multi_pentest") multi_target_pentest "$@" ;;
+        "auto_tools") auto_select_tools "$1" "$2" ;;
+        "tool_install") tool_ensure "$1" ;;
+        "tool_update") tool_update "$1" ;;
         "export_thesis") export_thesis ;;
         *) echo -e "${YELLOW}⚠️ $action non riconosciuto${RESET}" ;;
     esac
@@ -1376,7 +1386,7 @@ process_conversation() {
     think_thought "Analizzo richiesta utente..."
     think_observe "Stato sistema: RAM=$(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}')"
     
-    local context="Sei KALI-AI v7.0, un COGNITIVE PENTEST FRAMEWORK per Kali Linux creato da Antonio Telesca.
+    local context="Sei KALI-AI v8.0, un COGNITIVE PENTEST FRAMEWORK per Kali Linux creato da Antonio Telesca.
 Powered by Claude Opus 4.6. HAI IL CONTROLLO COMPLETO DEL SISTEMA.
 
 STATO: $snap
@@ -1469,7 +1479,7 @@ handle_special_commands() {
         "clear"|"c") clear; return 0 ;;
         "help"|"h"|"aiuto")
             echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════╗${RESET}"
-            echo -e "${CYAN}║  🤖 KALI-AI v7.0 — COGNITIVE PENTEST FRAMEWORK                ║${RESET}"
+            echo -e "${CYAN}║  🤖 KALI-AI v8.0 — COGNITIVE PENTEST FRAMEWORK                ║${RESET}"
             echo -e "${CYAN}╠═══════════════════════════════════════════════════════════════╣${RESET}"
             echo -e "${CYAN}║${RESET}  🗣️  Parla naturalmente!                                     ${CYAN}║${RESET}"
             echo -e "${CYAN}║${RESET}                                                              ${CYAN}║${RESET}"
@@ -1523,7 +1533,7 @@ main() {
     clear
     echo -e "${RED}"
     echo "╔═══════════════════════════════════════════════════════════════╗"
-    echo "║  🤖 KALI-AI v7.0 — COGNITIVE PENTEST FRAMEWORK                ║"
+    echo "║  🤖 KALI-AI v8.0 — COGNITIVE PENTEST FRAMEWORK                ║"
     echo "║        Powered by Claude Opus 4.6 (Anthropic)                 ║"
     echo "║           Reasoning Engine + Multi-Agent System               ║"
     echo "║              Creato da Antonio Telesca                        ║"
@@ -1542,7 +1552,7 @@ main() {
     start_thought_terminal
     sleep 1
     
-    think_phase "KALI-AI v7.0 INIZIALIZZATO"
+    think_phase "KALI-AI v8.0 INIZIALIZZATO"
     think_thought "Sistema operativo: $(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d'\"' -f2)"
     think_thought "Modello AI: $MODEL"
     think_thought "RAM: $(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}')"
@@ -1960,4 +1970,1453 @@ CVEHEAD
     
     think_result "CVE Scan completato: $total_cve servizi analizzati → $report_file"
     echo -e "${GREEN}🔴 CVE Report: $report_file${RESET}"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# FASE 19: SMART AUTO-INSTALL & EXECUTE ENGINE
+# ═══════════════════════════════════════════════════════════════
+
+TOOL_REGISTRY="$BASE_DIR/tool_registry.json"
+
+init_tool_registry() {
+    if [[ ! -f "$TOOL_REGISTRY" ]]; then
+        cat > "$TOOL_REGISTRY" << 'TOOLEOF'
+{
+  "tools": {
+    "nmap": {"package":"nmap","category":"scanner","check":"nmap --version","install":"apt"},
+    "masscan": {"package":"masscan","category":"scanner","check":"masscan --version","install":"apt"},
+    "nikto": {"package":"nikto","category":"web","check":"nikto -Version","install":"apt"},
+    "dirb": {"package":"dirb","category":"web","check":"which dirb","install":"apt"},
+    "gobuster": {"package":"gobuster","category":"web","check":"gobuster version","install":"apt"},
+    "feroxbuster": {"package":"feroxbuster","category":"web","check":"feroxbuster --version","install":"apt"},
+    "whatweb": {"package":"whatweb","category":"web","check":"whatweb --version","install":"apt"},
+    "wpscan": {"package":"wpscan","category":"web","check":"wpscan --version","install":"apt"},
+    "sqlmap": {"package":"sqlmap","category":"web","check":"sqlmap --version","install":"apt"},
+    "hydra": {"package":"hydra","category":"bruteforce","check":"hydra -h","install":"apt"},
+    "medusa": {"package":"medusa","category":"bruteforce","check":"medusa -V","install":"apt"},
+    "john": {"package":"john","category":"password","check":"john --version","install":"apt"},
+    "hashcat": {"package":"hashcat","category":"password","check":"hashcat --version","install":"apt"},
+    "enum4linux": {"package":"enum4linux","category":"enum","check":"which enum4linux","install":"apt"},
+    "smbclient": {"package":"smbclient","category":"enum","check":"smbclient --version","install":"apt"},
+    "crackmapexec": {"package":"crackmapexec","category":"enum","check":"crackmapexec --version","install":"apt"},
+    "netexec": {"package":"netexec","category":"enum","check":"netexec --version","install":"pip"},
+    "responder": {"package":"responder","category":"mitm","check":"which responder","install":"apt"},
+    "wireshark": {"package":"wireshark","category":"sniffer","check":"wireshark --version","install":"apt"},
+    "tcpdump": {"package":"tcpdump","category":"sniffer","check":"tcpdump --version","install":"apt"},
+    "metasploit-framework": {"package":"metasploit-framework","category":"exploit","check":"msfconsole -v","install":"apt"},
+    "exploitdb": {"package":"exploitdb","category":"exploit","check":"searchsploit -h","install":"apt"},
+    "sslscan": {"package":"sslscan","category":"ssl","check":"sslscan --version","install":"apt"},
+    "testssl.sh": {"package":"testssl.sh","category":"ssl","check":"which testssl.sh","install":"apt"},
+    "dnsrecon": {"package":"dnsrecon","category":"dns","check":"dnsrecon -h","install":"apt"},
+    "dnsenum": {"package":"dnsenum","category":"dns","check":"which dnsenum","install":"apt"},
+    "fierce": {"package":"fierce","category":"dns","check":"fierce -h","install":"pip"},
+    "subfinder": {"package":"subfinder","category":"dns","check":"subfinder -version","install":"go"},
+    "nuclei": {"package":"nuclei","category":"vuln","check":"nuclei -version","install":"go"},
+    "amass": {"package":"amass","category":"recon","check":"amass -version","install":"apt"},
+    "theHarvester": {"package":"theharvester","category":"recon","check":"theHarvester -h","install":"apt"},
+    "recon-ng": {"package":"recon-ng","category":"recon","check":"which recon-ng","install":"apt"},
+    "aircrack-ng": {"package":"aircrack-ng","category":"wireless","check":"aircrack-ng --version","install":"apt"},
+    "bettercap": {"package":"bettercap","category":"mitm","check":"bettercap -v","install":"apt"},
+    "ettercap-common": {"package":"ettercap-common","category":"mitm","check":"ettercap -v","install":"apt"},
+    "bloodhound": {"package":"bloodhound","category":"ad","check":"which bloodhound","install":"apt"},
+    "impacket-scripts": {"package":"impacket-scripts","category":"ad","check":"which impacket-scripts","install":"apt"},
+    "evil-winrm": {"package":"evil-winrm","category":"ad","check":"evil-winrm -v","install":"gem"},
+    "ssh-audit": {"package":"ssh-audit","category":"audit","check":"ssh-audit -h","install":"pip"},
+    "lynis": {"package":"lynis","category":"audit","check":"lynis --version","install":"apt"},
+    "snmpcheck": {"package":"snmpcheck","category":"enum","check":"which snmpcheck","install":"apt"},
+    "onesixtyone": {"package":"onesixtyone","category":"enum","check":"which onesixtyone","install":"apt"},
+    "nbtscan": {"package":"nbtscan","category":"enum","check":"nbtscan -h","install":"apt"},
+    "graphviz": {"package":"graphviz","category":"util","check":"dot -V","install":"apt"},
+    "xsltproc": {"package":"xsltproc","category":"util","check":"xsltproc --version","install":"apt"},
+    "jq": {"package":"jq","category":"util","check":"jq --version","install":"apt"},
+    "python3-pip": {"package":"python3-pip","category":"util","check":"pip3 --version","install":"apt"},
+    "curl": {"package":"curl","category":"util","check":"curl --version","install":"apt"},
+    "wget": {"package":"wget","category":"util","check":"wget --version","install":"apt"}
+  }
+}
+TOOLEOF
+    fi
+}
+
+tool_ensure() {
+    local tool_name="$1"
+    local silent="${2:-false}"
+    
+    if command -v "$tool_name" &>/dev/null; then
+        [[ "$silent" != "true" ]] && think_thought "✅ $tool_name già installato"
+        return 0
+    fi
+    
+    think_phase "AUTO-INSTALL: $tool_name"
+    think_thought "$tool_name non trovato, installo automaticamente..."
+    
+    local pkg_info=""
+    if [[ -f "$TOOL_REGISTRY" ]]; then
+        pkg_info=$(jq -r --arg t "$tool_name" '.tools[$t] // empty' "$TOOL_REGISTRY" 2>/dev/null)
+    fi
+    
+    local package="$tool_name"
+    local install_method="apt"
+    
+    if [[ -n "$pkg_info" ]]; then
+        package=$(echo "$pkg_info" | jq -r '.package // empty')
+        install_method=$(echo "$pkg_info" | jq -r '.install // "apt"')
+    fi
+    
+    case "$install_method" in
+        "apt")
+            think_agent "📦 apt install -y $package"
+            sudo apt update -qq 2>/dev/null
+            sudo DEBIAN_FRONTEND=noninteractive apt install -y "$package" 2>&1 | tail -3
+            ;;
+        "pip")
+            think_agent "📦 pip3 install $package"
+            pip3 install "$package" 2>&1 | tail -3
+            ;;
+        "go")
+            think_agent "📦 go install $package"
+            if ! command -v go &>/dev/null; then
+                sudo apt install -y golang 2>/dev/null
+            fi
+            go install "github.com/projectdiscovery/${package}/v2/cmd/${package}@latest" 2>&1 | tail -3
+            export PATH="$PATH:$HOME/go/bin"
+            ;;
+        "gem")
+            think_agent "📦 gem install $package"
+            sudo gem install "$package" 2>&1 | tail -3
+            ;;
+    esac
+    
+    if command -v "$tool_name" &>/dev/null; then
+        think_result "✅ $tool_name installato con successo"
+        return 0
+    else
+        think_error "❌ Installazione $tool_name fallita"
+        return 1
+    fi
+}
+
+tool_ensure_list() {
+    local tools=("$@")
+    local missing=()
+    local installed=()
+    
+    think_phase "VERIFICA TOOL RICHIESTI"
+    
+    for tool in "${tools[@]}"; do
+        if command -v "$tool" &>/dev/null; then
+            installed+=("$tool")
+        else
+            missing+=("$tool")
+        fi
+    done
+    
+    think_observe "Installati: ${#installed[@]} | Mancanti: ${#missing[@]}"
+    
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        think_thought "Installo ${#missing[@]} tool mancanti: ${missing[*]}"
+        for tool in "${missing[@]}"; do
+            tool_ensure "$tool"
+        done
+    fi
+    
+    think_result "Tutti i tool verificati e pronti"
+}
+
+tool_update() {
+    local tool_name="$1"
+    
+    think_phase "AGGIORNAMENTO: $tool_name"
+    
+    local pkg_info=""
+    if [[ -f "$TOOL_REGISTRY" ]]; then
+        pkg_info=$(jq -r --arg t "$tool_name" '.tools[$t] // empty' "$TOOL_REGISTRY" 2>/dev/null)
+    fi
+    
+    local package="${tool_name}"
+    local install_method="apt"
+    
+    if [[ -n "$pkg_info" ]]; then
+        package=$(echo "$pkg_info" | jq -r '.package // empty')
+        install_method=$(echo "$pkg_info" | jq -r '.install // "apt"')
+    fi
+    
+    case "$install_method" in
+        "apt")
+            sudo apt update -qq 2>/dev/null
+            sudo apt install --only-upgrade -y "$package" 2>&1 | tail -3
+            ;;
+        "pip")
+            pip3 install --upgrade "$package" 2>&1 | tail -3
+            ;;
+        "go")
+            go install "github.com/projectdiscovery/${package}/v2/cmd/${package}@latest" 2>&1 | tail -3
+            ;;
+        "gem")
+            sudo gem update "$package" 2>&1 | tail -3
+            ;;
+    esac
+    
+    think_result "$tool_name aggiornato"
+}
+
+auto_select_tools() {
+    local task="$1"
+    local target="$2"
+    
+    think_phase "AUTO-SELECT TOOLS per: $task"
+    
+    case "$task" in
+        "web_scan"|"web")
+            tool_ensure_list nikto dirb gobuster whatweb wpscan
+            think_decide "Tool web pronti: nikto, dirb, gobuster, whatweb, wpscan"
+            ;;
+        "sql_injection"|"sqli")
+            tool_ensure_list sqlmap
+            think_decide "Tool SQLi pronto: sqlmap"
+            ;;
+        "brute_force"|"bruteforce")
+            tool_ensure_list hydra medusa john
+            think_decide "Tool bruteforce pronti: hydra, medusa, john"
+            ;;
+        "smb_enum"|"smb")
+            tool_ensure_list enum4linux smbclient crackmapexec nbtscan
+            think_decide "Tool SMB pronti: enum4linux, smbclient, crackmapexec"
+            ;;
+        "dns_enum"|"dns")
+            tool_ensure_list dnsrecon dnsenum fierce
+            think_decide "Tool DNS pronti: dnsrecon, dnsenum, fierce"
+            ;;
+        "ssl_audit"|"ssl")
+            tool_ensure_list sslscan testssl.sh
+            think_decide "Tool SSL pronti: sslscan, testssl.sh"
+            ;;
+        "wireless"|"wifi")
+            tool_ensure_list aircrack-ng bettercap
+            think_decide "Tool wireless pronti: aircrack-ng, bettercap"
+            ;;
+        "exploit")
+            tool_ensure_list metasploit-framework exploitdb
+            think_decide "Tool exploit pronti: msfconsole, searchsploit"
+            ;;
+        "ad_attack"|"active_directory")
+            tool_ensure_list bloodhound impacket-scripts crackmapexec evil-winrm
+            think_decide "Tool AD pronti: bloodhound, impacket, crackmapexec, evil-winrm"
+            ;;
+        "sniff"|"mitm")
+            tool_ensure_list tcpdump wireshark bettercap ettercap-common responder
+            think_decide "Tool sniffing pronti: tcpdump, wireshark, bettercap, ettercap"
+            ;;
+        "recon"|"osint")
+            tool_ensure_list amass theHarvester recon-ng
+            think_decide "Tool OSINT pronti: amass, theHarvester, recon-ng"
+            ;;
+        "vuln_scan"|"vuln")
+            tool_ensure_list nuclei nmap nikto
+            think_decide "Tool vuln scan pronti: nuclei, nmap, nikto"
+            ;;
+        "full_pentest"|"pentest")
+            tool_ensure_list nmap nikto dirb gobuster whatweb enum4linux smbclient hydra \
+                sqlmap sslscan dnsrecon exploitdb crackmapexec
+            think_decide "Arsenal completo pronto per pentest"
+            ;;
+        *)
+            think_thought "Task non riconosciuto, verifico tool base..."
+            tool_ensure_list nmap jq curl
+            ;;
+    esac
+}
+
+# ═══════════════════════════════════════════════════════════════
+# FASE 19: SMART AUTO-INSTALL & EXECUTE ENGINE
+# ═══════════════════════════════════════════════════════════════
+
+TOOL_REGISTRY="$BASE_DIR/tool_registry.json"
+
+init_tool_registry() {
+    if [[ ! -f "$TOOL_REGISTRY" ]]; then
+        cat > "$TOOL_REGISTRY" << 'TOOLEOF'
+{
+  "tools": {
+    "nmap": {"package":"nmap","category":"scanner","check":"nmap --version","install":"apt"},
+    "masscan": {"package":"masscan","category":"scanner","check":"masscan --version","install":"apt"},
+    "nikto": {"package":"nikto","category":"web","check":"nikto -Version","install":"apt"},
+    "dirb": {"package":"dirb","category":"web","check":"which dirb","install":"apt"},
+    "gobuster": {"package":"gobuster","category":"web","check":"gobuster version","install":"apt"},
+    "feroxbuster": {"package":"feroxbuster","category":"web","check":"feroxbuster --version","install":"apt"},
+    "whatweb": {"package":"whatweb","category":"web","check":"whatweb --version","install":"apt"},
+    "wpscan": {"package":"wpscan","category":"web","check":"wpscan --version","install":"apt"},
+    "sqlmap": {"package":"sqlmap","category":"web","check":"sqlmap --version","install":"apt"},
+    "hydra": {"package":"hydra","category":"bruteforce","check":"hydra -h","install":"apt"},
+    "medusa": {"package":"medusa","category":"bruteforce","check":"medusa -V","install":"apt"},
+    "john": {"package":"john","category":"password","check":"john --version","install":"apt"},
+    "hashcat": {"package":"hashcat","category":"password","check":"hashcat --version","install":"apt"},
+    "enum4linux": {"package":"enum4linux","category":"enum","check":"which enum4linux","install":"apt"},
+    "smbclient": {"package":"smbclient","category":"enum","check":"smbclient --version","install":"apt"},
+    "crackmapexec": {"package":"crackmapexec","category":"enum","check":"crackmapexec --version","install":"apt"},
+    "netexec": {"package":"netexec","category":"enum","check":"netexec --version","install":"pip"},
+    "responder": {"package":"responder","category":"mitm","check":"which responder","install":"apt"},
+    "wireshark": {"package":"wireshark","category":"sniffer","check":"wireshark --version","install":"apt"},
+    "tcpdump": {"package":"tcpdump","category":"sniffer","check":"tcpdump --version","install":"apt"},
+    "metasploit-framework": {"package":"metasploit-framework","category":"exploit","check":"msfconsole -v","install":"apt"},
+    "exploitdb": {"package":"exploitdb","category":"exploit","check":"searchsploit -h","install":"apt"},
+    "sslscan": {"package":"sslscan","category":"ssl","check":"sslscan --version","install":"apt"},
+    "testssl.sh": {"package":"testssl.sh","category":"ssl","check":"which testssl.sh","install":"apt"},
+    "dnsrecon": {"package":"dnsrecon","category":"dns","check":"dnsrecon -h","install":"apt"},
+    "dnsenum": {"package":"dnsenum","category":"dns","check":"which dnsenum","install":"apt"},
+    "fierce": {"package":"fierce","category":"dns","check":"fierce -h","install":"pip"},
+    "subfinder": {"package":"subfinder","category":"dns","check":"subfinder -version","install":"go"},
+    "nuclei": {"package":"nuclei","category":"vuln","check":"nuclei -version","install":"go"},
+    "amass": {"package":"amass","category":"recon","check":"amass -version","install":"apt"},
+    "theHarvester": {"package":"theharvester","category":"recon","check":"theHarvester -h","install":"apt"},
+    "recon-ng": {"package":"recon-ng","category":"recon","check":"which recon-ng","install":"apt"},
+    "aircrack-ng": {"package":"aircrack-ng","category":"wireless","check":"aircrack-ng --version","install":"apt"},
+    "bettercap": {"package":"bettercap","category":"mitm","check":"bettercap -v","install":"apt"},
+    "ettercap-common": {"package":"ettercap-common","category":"mitm","check":"ettercap -v","install":"apt"},
+    "bloodhound": {"package":"bloodhound","category":"ad","check":"which bloodhound","install":"apt"},
+    "impacket-scripts": {"package":"impacket-scripts","category":"ad","check":"which impacket-scripts","install":"apt"},
+    "evil-winrm": {"package":"evil-winrm","category":"ad","check":"evil-winrm -v","install":"gem"},
+    "ssh-audit": {"package":"ssh-audit","category":"audit","check":"ssh-audit -h","install":"pip"},
+    "lynis": {"package":"lynis","category":"audit","check":"lynis --version","install":"apt"},
+    "snmpcheck": {"package":"snmpcheck","category":"enum","check":"which snmpcheck","install":"apt"},
+    "onesixtyone": {"package":"onesixtyone","category":"enum","check":"which onesixtyone","install":"apt"},
+    "nbtscan": {"package":"nbtscan","category":"enum","check":"nbtscan -h","install":"apt"},
+    "graphviz": {"package":"graphviz","category":"util","check":"dot -V","install":"apt"},
+    "xsltproc": {"package":"xsltproc","category":"util","check":"xsltproc --version","install":"apt"},
+    "jq": {"package":"jq","category":"util","check":"jq --version","install":"apt"},
+    "python3-pip": {"package":"python3-pip","category":"util","check":"pip3 --version","install":"apt"},
+    "curl": {"package":"curl","category":"util","check":"curl --version","install":"apt"},
+    "wget": {"package":"wget","category":"util","check":"wget --version","install":"apt"}
+  }
+}
+TOOLEOF
+    fi
+}
+
+tool_ensure() {
+    local tool_name="$1"
+    local silent="${2:-false}"
+    
+    if command -v "$tool_name" &>/dev/null; then
+        [[ "$silent" != "true" ]] && think_thought "✅ $tool_name già installato"
+        return 0
+    fi
+    
+    think_phase "AUTO-INSTALL: $tool_name"
+    think_thought "$tool_name non trovato, installo automaticamente..."
+    
+    local pkg_info=""
+    if [[ -f "$TOOL_REGISTRY" ]]; then
+        pkg_info=$(jq -r --arg t "$tool_name" '.tools[$t] // empty' "$TOOL_REGISTRY" 2>/dev/null)
+    fi
+    
+    local package="$tool_name"
+    local install_method="apt"
+    
+    if [[ -n "$pkg_info" ]]; then
+        package=$(echo "$pkg_info" | jq -r '.package // empty')
+        install_method=$(echo "$pkg_info" | jq -r '.install // "apt"')
+    fi
+    
+    case "$install_method" in
+        "apt")
+            think_agent "📦 apt install -y $package"
+            sudo apt update -qq 2>/dev/null
+            sudo DEBIAN_FRONTEND=noninteractive apt install -y "$package" 2>&1 | tail -3
+            ;;
+        "pip")
+            think_agent "📦 pip3 install $package"
+            pip3 install "$package" 2>&1 | tail -3
+            ;;
+        "go")
+            think_agent "📦 go install $package"
+            if ! command -v go &>/dev/null; then
+                sudo apt install -y golang 2>/dev/null
+            fi
+            go install "github.com/projectdiscovery/${package}/v2/cmd/${package}@latest" 2>&1 | tail -3
+            export PATH="$PATH:$HOME/go/bin"
+            ;;
+        "gem")
+            think_agent "📦 gem install $package"
+            sudo gem install "$package" 2>&1 | tail -3
+            ;;
+    esac
+    
+    if command -v "$tool_name" &>/dev/null; then
+        think_result "✅ $tool_name installato con successo"
+        return 0
+    else
+        think_error "❌ Installazione $tool_name fallita"
+        return 1
+    fi
+}
+
+tool_ensure_list() {
+    local tools=("$@")
+    local missing=()
+    local installed=()
+    
+    think_phase "VERIFICA TOOL RICHIESTI"
+    
+    for tool in "${tools[@]}"; do
+        if command -v "$tool" &>/dev/null; then
+            installed+=("$tool")
+        else
+            missing+=("$tool")
+        fi
+    done
+    
+    think_observe "Installati: ${#installed[@]} | Mancanti: ${#missing[@]}"
+    
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        think_thought "Installo ${#missing[@]} tool mancanti: ${missing[*]}"
+        for tool in "${missing[@]}"; do
+            tool_ensure "$tool"
+        done
+    fi
+    
+    think_result "Tutti i tool verificati e pronti"
+}
+
+tool_update() {
+    local tool_name="$1"
+    
+    think_phase "AGGIORNAMENTO: $tool_name"
+    
+    local pkg_info=""
+    if [[ -f "$TOOL_REGISTRY" ]]; then
+        pkg_info=$(jq -r --arg t "$tool_name" '.tools[$t] // empty' "$TOOL_REGISTRY" 2>/dev/null)
+    fi
+    
+    local package="${tool_name}"
+    local install_method="apt"
+    
+    if [[ -n "$pkg_info" ]]; then
+        package=$(echo "$pkg_info" | jq -r '.package // empty')
+        install_method=$(echo "$pkg_info" | jq -r '.install // "apt"')
+    fi
+    
+    case "$install_method" in
+        "apt")
+            sudo apt update -qq 2>/dev/null
+            sudo apt install --only-upgrade -y "$package" 2>&1 | tail -3
+            ;;
+        "pip")
+            pip3 install --upgrade "$package" 2>&1 | tail -3
+            ;;
+        "go")
+            go install "github.com/projectdiscovery/${package}/v2/cmd/${package}@latest" 2>&1 | tail -3
+            ;;
+        "gem")
+            sudo gem update "$package" 2>&1 | tail -3
+            ;;
+    esac
+    
+    think_result "$tool_name aggiornato"
+}
+
+auto_select_tools() {
+    local task="$1"
+    local target="$2"
+    
+    think_phase "AUTO-SELECT TOOLS per: $task"
+    
+    case "$task" in
+        "web_scan"|"web")
+            tool_ensure_list nikto dirb gobuster whatweb wpscan
+            think_decide "Tool web pronti: nikto, dirb, gobuster, whatweb, wpscan"
+            ;;
+        "sql_injection"|"sqli")
+            tool_ensure_list sqlmap
+            think_decide "Tool SQLi pronto: sqlmap"
+            ;;
+        "brute_force"|"bruteforce")
+            tool_ensure_list hydra medusa john
+            think_decide "Tool bruteforce pronti: hydra, medusa, john"
+            ;;
+        "smb_enum"|"smb")
+            tool_ensure_list enum4linux smbclient crackmapexec nbtscan
+            think_decide "Tool SMB pronti: enum4linux, smbclient, crackmapexec"
+            ;;
+        "dns_enum"|"dns")
+            tool_ensure_list dnsrecon dnsenum fierce
+            think_decide "Tool DNS pronti: dnsrecon, dnsenum, fierce"
+            ;;
+        "ssl_audit"|"ssl")
+            tool_ensure_list sslscan testssl.sh
+            think_decide "Tool SSL pronti: sslscan, testssl.sh"
+            ;;
+        "wireless"|"wifi")
+            tool_ensure_list aircrack-ng bettercap
+            think_decide "Tool wireless pronti: aircrack-ng, bettercap"
+            ;;
+        "exploit")
+            tool_ensure_list metasploit-framework exploitdb
+            think_decide "Tool exploit pronti: msfconsole, searchsploit"
+            ;;
+        "ad_attack"|"active_directory")
+            tool_ensure_list bloodhound impacket-scripts crackmapexec evil-winrm
+            think_decide "Tool AD pronti: bloodhound, impacket, crackmapexec, evil-winrm"
+            ;;
+        "sniff"|"mitm")
+            tool_ensure_list tcpdump wireshark bettercap ettercap-common responder
+            think_decide "Tool sniffing pronti: tcpdump, wireshark, bettercap, ettercap"
+            ;;
+        "recon"|"osint")
+            tool_ensure_list amass theHarvester recon-ng
+            think_decide "Tool OSINT pronti: amass, theHarvester, recon-ng"
+            ;;
+        "vuln_scan"|"vuln")
+            tool_ensure_list nuclei nmap nikto
+            think_decide "Tool vuln scan pronti: nuclei, nmap, nikto"
+            ;;
+        "full_pentest"|"pentest")
+            tool_ensure_list nmap nikto dirb gobuster whatweb enum4linux smbclient hydra \
+                sqlmap sslscan dnsrecon exploitdb crackmapexec
+            think_decide "Arsenal completo pronto per pentest"
+            ;;
+        *)
+            think_thought "Task non riconosciuto, verifico tool base..."
+            tool_ensure_list nmap jq curl
+            ;;
+    esac
+}
+
+# ═══════════════════════════════════════════════════════════════
+# FASE 20: NETWORK TOPOLOGY MAPPER
+# ═══════════════════════════════════════════════════════════════
+
+network_topology_map() {
+    local target="$1"
+    local scan_dir="${2:-$PENTEST_RESULTS_DIR}"
+    local map_dir="$REPORTS_DIR/topology_$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$map_dir"
+    
+    tool_ensure "graphviz" "true"
+    
+    think_phase "NETWORK TOPOLOGY MAPPING"
+    think_thought "Genero mappa della rete da risultati scan..."
+    
+    local dot_file="$map_dir/network.dot"
+    local png_file="$map_dir/network_map.png"
+    local svg_file="$map_dir/network_map.svg"
+    local report_file="$map_dir/topology_report.md"
+    
+    cat > "$dot_file" << 'DOTHEAD'
+digraph NetworkTopology {
+    rankdir=TB;
+    bgcolor="#1a1a2e";
+    node [style=filled, fontname="Courier New", fontcolor=white];
+    edge [color="#00ff41", fontcolor="#00ff41", fontname="Courier New"];
+    
+    label="Kali-AI Network Topology Map";
+    labelloc=t;
+    fontname="Courier New Bold";
+    fontsize=20;
+    fontcolor="#00ff41";
+    
+    attacker [label="🤖 KALI-AI\nAttacker", shape=doubleoctagon, fillcolor="#e94560", fontcolor=white];
+DOTHEAD
+
+    local host_count=0
+    local total_ports=0
+    local host_nodes=""
+    
+    # Parse host e porte dai risultati scan
+    for scan_file in "$scan_dir"/scan/ports_*.txt "$scan_dir"/recon/hosts.txt; do
+        [[ ! -f "$scan_file" ]] && continue
+        
+        while IFS= read -r line; do
+            local ip=$(echo "$line" | grep -oP '\d+\.\d+\.\d+\.\d+' | head -1)
+            [[ -z "$ip" ]] && continue
+            [[ "$host_nodes" == *"$ip"* ]] && continue
+            
+            host_count=$((host_count + 1))
+            local node_id="host_${host_count}"
+            local os_info=""
+            local ports=""
+            local services=""
+            local risk_color="#16213e"
+            local port_count=0
+            
+            # Cerca info dettagliate nel file scan specifico
+            local host_scan="$scan_dir/scan/ports_${ip}.txt"
+            if [[ -f "$host_scan" ]]; then
+                ports=$(grep "open" "$host_scan" 2>/dev/null | awk '{print $1}' | tr '\n' ', ' | sed 's/,$//')
+                services=$(grep "open" "$host_scan" 2>/dev/null | awk '{print $3}' | sort -u | tr '\n' ', ' | sed 's/,$//')
+                os_info=$(grep -i "os details\|running:" "$host_scan" 2>/dev/null | head -1 | sed 's/.*: //')
+                port_count=$(grep -c "open" "$host_scan" 2>/dev/null || echo 0)
+            fi
+            
+            # Colore basato sul rischio
+            if [[ $port_count -gt 10 ]]; then
+                risk_color="#e94560"  # rosso = alto rischio
+            elif [[ $port_count -gt 5 ]]; then
+                risk_color="#f5a623"  # arancione = medio
+            elif [[ $port_count -gt 0 ]]; then
+                risk_color="#16213e"  # blu = basso
+            else
+                risk_color="#0f3460"  # blu scuro = minimo
+            fi
+            
+            local label="$ip"
+            [[ -n "$os_info" ]] && label="$label\n$os_info"
+            [[ -n "$services" ]] && label="$label\n[$services]"
+            [[ $port_count -gt 0 ]] && label="$label\n${port_count} porte aperte"
+            
+            echo "    $node_id [label=\"$label\", shape=box, fillcolor=\"$risk_color\"];" >> "$dot_file"
+            echo "    attacker -> $node_id [label=\"scan\"];" >> "$dot_file"
+            
+            # Aggiungi nodi per servizi critici
+            if echo "$ports" | grep -q "80\|443\|8080"; then
+                echo "    ${node_id}_web [label=\"🌐 Web\n$ip:80/443\", shape=ellipse, fillcolor=\"#e94560\"];" >> "$dot_file"
+                echo "    $node_id -> ${node_id}_web;" >> "$dot_file"
+            fi
+            if echo "$ports" | grep -q "445\|139"; then
+                echo "    ${node_id}_smb [label=\"📁 SMB\n$ip:445\", shape=ellipse, fillcolor=\"#f5a623\"];" >> "$dot_file"
+                echo "    $node_id -> ${node_id}_smb;" >> "$dot_file"
+            fi
+            if echo "$ports" | grep -q "3306\|5432\|1433\|27017"; then
+                echo "    ${node_id}_db [label=\"🗄️ Database\n$ip\", shape=cylinder, fillcolor=\"#e94560\"];" >> "$dot_file"
+                echo "    $node_id -> ${node_id}_db;" >> "$dot_file"
+            fi
+            if echo "$ports" | grep -q "22"; then
+                echo "    ${node_id}_ssh [label=\"🔑 SSH\n$ip:22\", shape=ellipse, fillcolor=\"#16213e\"];" >> "$dot_file"
+                echo "    $node_id -> ${node_id}_ssh;" >> "$dot_file"
+            fi
+            
+            total_ports=$((total_ports + port_count))
+            host_nodes="$host_nodes $ip"
+            
+            think_observe "Host $ip: $port_count porte, servizi: $services"
+        done < <(grep -oP '\d+\.\d+\.\d+\.\d+' "$scan_file" 2>/dev/null | sort -u)
+    done
+    
+    # Legenda
+    cat >> "$dot_file" << 'DOTLEGEND'
+    
+    subgraph cluster_legend {
+        label="Legenda Rischio";
+        style=dashed;
+        color="#00ff41";
+        fontcolor="#00ff41";
+        
+        leg_high [label="Alto Rischio\n>10 porte", shape=box, fillcolor="#e94560"];
+        leg_med [label="Medio Rischio\n5-10 porte", shape=box, fillcolor="#f5a623"];
+        leg_low [label="Basso Rischio\n<5 porte", shape=box, fillcolor="#16213e"];
+        leg_high -> leg_med -> leg_low [style=invis];
+    }
+}
+DOTLEGEND
+
+    # Genera immagini
+    if command -v dot &>/dev/null; then
+        dot -Tpng "$dot_file" -o "$png_file" 2>/dev/null
+        dot -Tsvg "$dot_file" -o "$svg_file" 2>/dev/null
+        think_result "Mappa PNG: $png_file"
+        think_result "Mappa SVG: $svg_file"
+    else
+        think_error "graphviz non disponibile, solo file DOT generato"
+    fi
+    
+    # Report testuale
+    cat > "$report_file" << TOPOREOF
+# 🗺️ Network Topology Report
+## Kali-AI v$VERSION — Cognitive Pentest Framework
+**Data:** $(date)
+**Target:** $target
+
+---
+
+## Statistiche Rete
+- **Host trovati:** $host_count
+- **Porte aperte totali:** $total_ports
+- **Media porte/host:** $(( host_count > 0 ? total_ports / host_count : 0 ))
+
+## File Generati
+- Mappa PNG: $png_file
+- Mappa SVG: $svg_file
+- File DOT: $dot_file
+
+## Host Identificati
+$(for ip in $host_nodes; do echo "- $ip"; done)
+
+---
+*Topology Map generata da Kali-AI v$VERSION*
+TOPOREOF
+
+    echo -e "${GREEN}🗺️ Network Topology Map generata: $map_dir${RESET}"
+    think_result "Topology: $host_count host, $total_ports porte → $map_dir"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# FASE 20: NETWORK TOPOLOGY MAPPER
+# ═══════════════════════════════════════════════════════════════
+
+network_topology_map() {
+    local target="$1"
+    local scan_dir="${2:-$PENTEST_RESULTS_DIR}"
+    local map_dir="$REPORTS_DIR/topology_$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$map_dir"
+    
+    tool_ensure "graphviz" "true"
+    
+    think_phase "NETWORK TOPOLOGY MAPPING"
+    think_thought "Genero mappa della rete da risultati scan..."
+    
+    local dot_file="$map_dir/network.dot"
+    local png_file="$map_dir/network_map.png"
+    local svg_file="$map_dir/network_map.svg"
+    local report_file="$map_dir/topology_report.md"
+    
+    cat > "$dot_file" << 'DOTHEAD'
+digraph NetworkTopology {
+    rankdir=TB;
+    bgcolor="#1a1a2e";
+    node [style=filled, fontname="Courier New", fontcolor=white];
+    edge [color="#00ff41", fontcolor="#00ff41", fontname="Courier New"];
+    
+    label="Kali-AI Network Topology Map";
+    labelloc=t;
+    fontname="Courier New Bold";
+    fontsize=20;
+    fontcolor="#00ff41";
+    
+    attacker [label="🤖 KALI-AI\nAttacker", shape=doubleoctagon, fillcolor="#e94560", fontcolor=white];
+DOTHEAD
+
+    local host_count=0
+    local total_ports=0
+    local host_nodes=""
+    
+    # Parse host e porte dai risultati scan
+    for scan_file in "$scan_dir"/scan/ports_*.txt "$scan_dir"/recon/hosts.txt; do
+        [[ ! -f "$scan_file" ]] && continue
+        
+        while IFS= read -r line; do
+            local ip=$(echo "$line" | grep -oP '\d+\.\d+\.\d+\.\d+' | head -1)
+            [[ -z "$ip" ]] && continue
+            [[ "$host_nodes" == *"$ip"* ]] && continue
+            
+            host_count=$((host_count + 1))
+            local node_id="host_${host_count}"
+            local os_info=""
+            local ports=""
+            local services=""
+            local risk_color="#16213e"
+            local port_count=0
+            
+            # Cerca info dettagliate nel file scan specifico
+            local host_scan="$scan_dir/scan/ports_${ip}.txt"
+            if [[ -f "$host_scan" ]]; then
+                ports=$(grep "open" "$host_scan" 2>/dev/null | awk '{print $1}' | tr '\n' ', ' | sed 's/,$//')
+                services=$(grep "open" "$host_scan" 2>/dev/null | awk '{print $3}' | sort -u | tr '\n' ', ' | sed 's/,$//')
+                os_info=$(grep -i "os details\|running:" "$host_scan" 2>/dev/null | head -1 | sed 's/.*: //')
+                port_count=$(grep -c "open" "$host_scan" 2>/dev/null || echo 0)
+            fi
+            
+            # Colore basato sul rischio
+            if [[ $port_count -gt 10 ]]; then
+                risk_color="#e94560"  # rosso = alto rischio
+            elif [[ $port_count -gt 5 ]]; then
+                risk_color="#f5a623"  # arancione = medio
+            elif [[ $port_count -gt 0 ]]; then
+                risk_color="#16213e"  # blu = basso
+            else
+                risk_color="#0f3460"  # blu scuro = minimo
+            fi
+            
+            local label="$ip"
+            [[ -n "$os_info" ]] && label="$label\n$os_info"
+            [[ -n "$services" ]] && label="$label\n[$services]"
+            [[ $port_count -gt 0 ]] && label="$label\n${port_count} porte aperte"
+            
+            echo "    $node_id [label=\"$label\", shape=box, fillcolor=\"$risk_color\"];" >> "$dot_file"
+            echo "    attacker -> $node_id [label=\"scan\"];" >> "$dot_file"
+            
+            # Aggiungi nodi per servizi critici
+            if echo "$ports" | grep -q "80\|443\|8080"; then
+                echo "    ${node_id}_web [label=\"🌐 Web\n$ip:80/443\", shape=ellipse, fillcolor=\"#e94560\"];" >> "$dot_file"
+                echo "    $node_id -> ${node_id}_web;" >> "$dot_file"
+            fi
+            if echo "$ports" | grep -q "445\|139"; then
+                echo "    ${node_id}_smb [label=\"📁 SMB\n$ip:445\", shape=ellipse, fillcolor=\"#f5a623\"];" >> "$dot_file"
+                echo "    $node_id -> ${node_id}_smb;" >> "$dot_file"
+            fi
+            if echo "$ports" | grep -q "3306\|5432\|1433\|27017"; then
+                echo "    ${node_id}_db [label=\"🗄️ Database\n$ip\", shape=cylinder, fillcolor=\"#e94560\"];" >> "$dot_file"
+                echo "    $node_id -> ${node_id}_db;" >> "$dot_file"
+            fi
+            if echo "$ports" | grep -q "22"; then
+                echo "    ${node_id}_ssh [label=\"🔑 SSH\n$ip:22\", shape=ellipse, fillcolor=\"#16213e\"];" >> "$dot_file"
+                echo "    $node_id -> ${node_id}_ssh;" >> "$dot_file"
+            fi
+            
+            total_ports=$((total_ports + port_count))
+            host_nodes="$host_nodes $ip"
+            
+            think_observe "Host $ip: $port_count porte, servizi: $services"
+        done < <(grep -oP '\d+\.\d+\.\d+\.\d+' "$scan_file" 2>/dev/null | sort -u)
+    done
+    
+    # Legenda
+    cat >> "$dot_file" << 'DOTLEGEND'
+    
+    subgraph cluster_legend {
+        label="Legenda Rischio";
+        style=dashed;
+        color="#00ff41";
+        fontcolor="#00ff41";
+        
+        leg_high [label="Alto Rischio\n>10 porte", shape=box, fillcolor="#e94560"];
+        leg_med [label="Medio Rischio\n5-10 porte", shape=box, fillcolor="#f5a623"];
+        leg_low [label="Basso Rischio\n<5 porte", shape=box, fillcolor="#16213e"];
+        leg_high -> leg_med -> leg_low [style=invis];
+    }
+}
+DOTLEGEND
+
+    # Genera immagini
+    if command -v dot &>/dev/null; then
+        dot -Tpng "$dot_file" -o "$png_file" 2>/dev/null
+        dot -Tsvg "$dot_file" -o "$svg_file" 2>/dev/null
+        think_result "Mappa PNG: $png_file"
+        think_result "Mappa SVG: $svg_file"
+    else
+        think_error "graphviz non disponibile, solo file DOT generato"
+    fi
+    
+    # Report testuale
+    cat > "$report_file" << TOPOREOF
+# 🗺️ Network Topology Report
+## Kali-AI v$VERSION — Cognitive Pentest Framework
+**Data:** $(date)
+**Target:** $target
+
+---
+
+## Statistiche Rete
+- **Host trovati:** $host_count
+- **Porte aperte totali:** $total_ports
+- **Media porte/host:** $(( host_count > 0 ? total_ports / host_count : 0 ))
+
+## File Generati
+- Mappa PNG: $png_file
+- Mappa SVG: $svg_file
+- File DOT: $dot_file
+
+## Host Identificati
+$(for ip in $host_nodes; do echo "- $ip"; done)
+
+---
+*Topology Map generata da Kali-AI v$VERSION*
+TOPOREOF
+
+    echo -e "${GREEN}🗺️ Network Topology Map generata: $map_dir${RESET}"
+    think_result "Topology: $host_count host, $total_ports porte → $map_dir"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# FASE 21: RISK SCORING ENGINE
+# ═══════════════════════════════════════════════════════════════
+
+risk_score_target() {
+    local target="$1"
+    local scan_dir="${2:-$PENTEST_RESULTS_DIR}"
+    local report_file="$REPORTS_DIR/risk_score_$(date +%Y%m%d_%H%M%S).md"
+    
+    think_phase "RISK SCORING ENGINE"
+    think_thought "Calcolo punteggio di rischio complessivo..."
+    
+    local total_score=0
+    local max_score=100
+    local findings=()
+    
+    # 1. Analisi porte aperte (max 25 punti)
+    local port_count=0
+    local critical_ports=0
+    for scan_file in "$scan_dir"/scan/ports_*.txt; do
+        [[ ! -f "$scan_file" ]] && continue
+        local pc=$(grep -c "open" "$scan_file" 2>/dev/null || echo 0)
+        port_count=$((port_count + pc))
+        
+        # Porte critiche
+        grep "open" "$scan_file" 2>/dev/null | while read -r line; do
+            local port=$(echo "$line" | grep -oP '^\d+')
+            case "$port" in
+                21) critical_ports=$((critical_ports + 1)); findings+=("FTP esposto (porta 21)") ;;
+                23) critical_ports=$((critical_ports + 2)); findings+=("TELNET esposto (porta 23) — CRITICO") ;;
+                445) critical_ports=$((critical_ports + 2)); findings+=("SMB esposto (porta 445) — CRITICO") ;;
+                3389) critical_ports=$((critical_ports + 2)); findings+=("RDP esposto (porta 3389) — CRITICO") ;;
+                3306) critical_ports=$((critical_ports + 1)); findings+=("MySQL esposto (porta 3306)") ;;
+                5432) critical_ports=$((critical_ports + 1)); findings+=("PostgreSQL esposto (porta 5432)") ;;
+                6379) critical_ports=$((critical_ports + 2)); findings+=("Redis esposto (porta 6379) — CRITICO") ;;
+                27017) critical_ports=$((critical_ports + 2)); findings+=("MongoDB esposto (porta 27017) — CRITICO") ;;
+                1433) critical_ports=$((critical_ports + 2)); findings+=("MSSQL esposto (porta 1433) — CRITICO") ;;
+            esac
+        done
+    done
+    
+    local port_score=0
+    if [[ $port_count -gt 20 ]]; then port_score=25
+    elif [[ $port_count -gt 10 ]]; then port_score=20
+    elif [[ $port_count -gt 5 ]]; then port_score=15
+    elif [[ $port_count -gt 0 ]]; then port_score=10
+    fi
+    total_score=$((total_score + port_score))
+    think_observe "Porte aperte: $port_count → Score: $port_score/25"
+    
+    # 2. Servizi critici esposti (max 25 punti)
+    local service_score=$((critical_ports * 3))
+    [[ $service_score -gt 25 ]] && service_score=25
+    total_score=$((total_score + service_score))
+    think_observe "Servizi critici: $critical_ports → Score: $service_score/25"
+    
+    # 3. Versioni obsolete / CVE note (max 25 punti)
+    local vuln_score=0
+    local vuln_count=0
+    for vuln_file in "$scan_dir"/vuln/*.txt "$REPORTS_DIR"/cve_report_*.md; do
+        [[ ! -f "$vuln_file" ]] && continue
+        local vc=$(grep -ci "CVE-\|CRITICAL\|HIGH\|vulnerable" "$vuln_file" 2>/dev/null || echo 0)
+        vuln_count=$((vuln_count + vc))
+    done
+    
+    if [[ $vuln_count -gt 20 ]]; then vuln_score=25
+    elif [[ $vuln_count -gt 10 ]]; then vuln_score=20
+    elif [[ $vuln_count -gt 5 ]]; then vuln_score=15
+    elif [[ $vuln_count -gt 0 ]]; then vuln_score=10
+    fi
+    total_score=$((total_score + vuln_score))
+    think_observe "Vulnerabilità trovate: $vuln_count → Score: $vuln_score/25"
+    
+    # 4. Configurazione debole (max 25 punti)
+    local config_score=0
+    local weak_configs=0
+    
+    # Check anonymous FTP
+    for f in "$scan_dir"/enum/*.txt "$scan_dir"/scan/*.txt; do
+        [[ ! -f "$f" ]] && continue
+        grep -qi "anonymous" "$f" 2>/dev/null && { weak_configs=$((weak_configs + 3)); findings+=("FTP Anonymous abilitato"); }
+        grep -qi "null session\|guest" "$f" 2>/dev/null && { weak_configs=$((weak_configs + 3)); findings+=("Null session / Guest access"); }
+        grep -qi "default password\|admin:admin\|root:root" "$f" 2>/dev/null && { weak_configs=$((weak_configs + 5)); findings+=("Credenziali di default trovate — CRITICO"); }
+        grep -qi "directory listing\|index of" "$f" 2>/dev/null && { weak_configs=$((weak_configs + 2)); findings+=("Directory listing abilitato"); }
+        grep -qi "ssl.*weak\|sslv3\|tlsv1.0" "$f" 2>/dev/null && { weak_configs=$((weak_configs + 2)); findings+=("SSL/TLS debole"); }
+    done
+    
+    config_score=$((weak_configs))
+    [[ $config_score -gt 25 ]] && config_score=25
+    total_score=$((total_score + config_score))
+    think_observe "Configurazioni deboli: $weak_configs → Score: $config_score/25"
+    
+    # Determina livello di rischio
+    local risk_level=""
+    local risk_color=""
+    local risk_emoji=""
+    if [[ $total_score -ge 75 ]]; then
+        risk_level="CRITICAL"
+        risk_color="$RED"
+        risk_emoji="🔴"
+    elif [[ $total_score -ge 50 ]]; then
+        risk_level="HIGH"
+        risk_color="$RED"
+        risk_emoji="🟠"
+    elif [[ $total_score -ge 25 ]]; then
+        risk_level="MEDIUM"
+        risk_color="$YELLOW"
+        risk_emoji="🟡"
+    else
+        risk_level="LOW"
+        risk_color="$GREEN"
+        risk_emoji="🟢"
+    fi
+    
+    think_result "RISK SCORE: $total_score/$max_score — $risk_level"
+    
+    # Genera report
+    cat > "$report_file" << RISKREOF
+# $risk_emoji Risk Assessment Report
+## Kali-AI v$VERSION — Cognitive Pentest Framework
+**Data:** $(date)
+**Target:** $target
+
+---
+
+## Risk Score: $total_score / $max_score — $risk_level
+
+### Breakdown
+| Categoria | Score | Max | Dettaglio |
+|-----------|-------|-----|-----------|
+| Porte Aperte | $port_score | 25 | $port_count porte trovate |
+| Servizi Critici | $service_score | 25 | $critical_ports servizi ad alto rischio |
+| Vulnerabilità Note | $vuln_score | 25 | $vuln_count CVE/vulnerabilità |
+| Configurazioni Deboli | $config_score | 25 | $weak_configs problemi configurazione |
+| **TOTALE** | **$total_score** | **$max_score** | **$risk_level** |
+
+### Risk Meter
+\`\`\`
+[$(printf '█%.0s' $(seq 1 $((total_score / 2))))$(printf '░%.0s' $(seq 1 $(( (max_score - total_score) / 2))))] $total_score%
+ 0    10    20    30    40    50    60    70    80    90   100
+ 🟢 LOW    🟡 MEDIUM      🟠 HIGH         🔴 CRITICAL
+\`\`\`
+
+### Findings
+$(for f in "${findings[@]}"; do echo "- $f"; done)
+
+### Raccomandazioni Prioritarie
+$(if [[ $total_score -ge 75 ]]; then
+echo "1. **URGENTE:** Isolare immediatamente i sistemi esposti"
+echo "2. **URGENTE:** Applicare patch per tutte le CVE critiche"
+echo "3. **URGENTE:** Disabilitare servizi non necessari"
+echo "4. Implementare segmentazione di rete"
+echo "5. Attivare IDS/IPS"
+elif [[ $total_score -ge 50 ]]; then
+echo "1. Chiudere porte non necessarie"
+echo "2. Aggiornare servizi con CVE note"
+echo "3. Rimuovere credenziali di default"
+echo "4. Implementare firewall rules"
+elif [[ $total_score -ge 25 ]]; then
+echo "1. Monitorare servizi esposti"
+echo "2. Pianificare aggiornamenti"
+echo "3. Verificare configurazioni"
+else
+echo "1. Mantenere le buone pratiche attuali"
+echo "2. Continuare monitoraggio periodico"
+fi)
+
+---
+*Risk Assessment generato da Kali-AI v$VERSION*
+RISKREOF
+
+    echo -e "${risk_color}╔═══════════════════════════════════════════════════════════════╗${RESET}"
+    echo -e "${risk_color}║  $risk_emoji RISK SCORE: $total_score/$max_score — $risk_level${RESET}"
+    echo -e "${risk_color}║  Porte: $port_score | Servizi: $service_score | CVE: $vuln_score | Config: $config_score${RESET}"
+    echo -e "${risk_color}╚═══════════════════════════════════════════════════════════════╝${RESET}"
+    echo -e "${GREEN}📊 Report: $report_file${RESET}"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# FASE 22: AUTO-EXPLOITATION ENGINE
+# ═══════════════════════════════════════════════════════════════
+
+exploit_search() {
+    local service="$1"
+    local version="$2"
+    local output_file="${3:-}"
+    
+    tool_ensure "exploitdb" "true"
+    
+    think_phase "EXPLOIT SEARCH: $service $version"
+    think_thought "Cerco exploit noti per $service $version..."
+    
+    local results=""
+    local query="$service $version"
+    
+    # SearchSploit (ExploitDB locale)
+    if command -v searchsploit &>/dev/null; then
+        results=$(searchsploit --no-colour "$query" 2>/dev/null | head -20)
+        
+        if [[ -n "$results" ]] && ! echo "$results" | grep -q "No Results"; then
+            local exploit_count=$(echo "$results" | grep -c "/" 2>/dev/null || echo 0)
+            think_observe "SearchSploit: $exploit_count exploit trovati per $query"
+            
+            echo -e "${RED}💀 Exploit trovati per $service $version:${RESET}"
+            echo "$results"
+            echo ""
+            
+            if [[ -n "$output_file" ]]; then
+                echo "## Exploit per $service $version" >> "$output_file"
+                echo '```' >> "$output_file"
+                echo "$results" >> "$output_file"
+                echo '```' >> "$output_file"
+                echo "" >> "$output_file"
+            fi
+        else
+            think_thought "Nessun exploit trovato per $query"
+        fi
+    fi
+    
+    # Cerca anche moduli Metasploit
+    if command -v msfconsole &>/dev/null; then
+        think_agent "Cerco moduli Metasploit..."
+        local msf_results=$(msfconsole -q -x "search $query; exit" 2>/dev/null | grep -E "exploit/|auxiliary/" | head -10)
+        
+        if [[ -n "$msf_results" ]]; then
+            local msf_count=$(echo "$msf_results" | wc -l)
+            think_observe "Metasploit: $msf_count moduli trovati"
+            
+            echo -e "${RED}🎯 Moduli Metasploit per $service $version:${RESET}"
+            echo "$msf_results"
+            echo ""
+            
+            if [[ -n "$output_file" ]]; then
+                echo "## Moduli Metasploit per $service $version" >> "$output_file"
+                echo '```' >> "$output_file"
+                echo "$msf_results" >> "$output_file"
+                echo '```' >> "$output_file"
+                echo "" >> "$output_file"
+            fi
+        fi
+    fi
+}
+
+exploit_scan_from_nmap() {
+    local scan_file="$1"
+    local report_file="$REPORTS_DIR/exploit_report_$(date +%Y%m%d_%H%M%S).md"
+    
+    think_phase "AUTO-EXPLOITATION SCAN"
+    think_thought "Cerco exploit per tutti i servizi trovati..."
+    
+    cat > "$report_file" << EXPHEAD
+# 💀 Exploitation Report
+## Kali-AI v$VERSION — Cognitive Pentest Framework
+**Data:** $(date)
+**Scan File:** $scan_file
+**⚠️ SOLO PER SCOPI DI RICERCA E TEST AUTORIZZATI**
+
+---
+
+EXPHEAD
+
+    local total_exploits=0
+    
+    while IFS= read -r line; do
+        local port=$(echo "$line" | grep -oP '^\d+')
+        local service=$(echo "$line" | awk '{print $3}')
+        local version_info=$(echo "$line" | sed 's/.*open[[:space:]]*//' | awk '{$1=""; print $0}' | sed 's/^ *//')
+        
+        if [[ -n "$service" && -n "$version_info" ]]; then
+            think_agent "Exploit Search: $service $version_info (porta $port)"
+            exploit_search "$service" "$version_info" "$report_file"
+            total_exploits=$((total_exploits + 1))
+            sleep 0.5
+        fi
+    done < <(grep "open" "$scan_file" 2>/dev/null | grep -v "^#")
+    
+    cat >> "$report_file" << EXPFOOT
+
+---
+
+## Sommario
+- **Servizi analizzati:** $total_exploits
+- **Database:** ExploitDB + Metasploit Framework
+
+## ⚠️ Disclaimer
+Questo report è generato per scopi di ricerca e penetration testing autorizzato.
+L'uso non autorizzato di exploit è illegale.
+
+---
+*Exploitation Report generato da Kali-AI v$VERSION*
+EXPFOOT
+
+    think_result "Exploit Scan completato: $total_exploits servizi → $report_file"
+    echo -e "${GREEN}💀 Exploit Report: $report_file${RESET}"
+}
+
+generate_attack_chain() {
+    local target="$1"
+    local scan_dir="${2:-$PENTEST_RESULTS_DIR}"
+    local report_file="$REPORTS_DIR/attack_chain_$(date +%Y%m%d_%H%M%S).md"
+    
+    think_phase "ATTACK CHAIN GENERATOR"
+    think_thought "Genero catena di attacco basata sui risultati..."
+    
+    local chain_steps=()
+    local step=1
+    
+    # Step 1: Ricognizione
+    chain_steps+=("$step. **Ricognizione** → nmap -sn $target (Host Discovery)")
+    step=$((step + 1))
+    
+    # Step 2: Scansione
+    chain_steps+=("$step. **Scansione Porte** → nmap -sV -sC -O $target")
+    step=$((step + 1))
+    
+    # Analizza servizi trovati per costruire la catena
+    for scan_file in "$scan_dir"/scan/ports_*.txt; do
+        [[ ! -f "$scan_file" ]] && continue
+        
+        if grep -q "80/tcp.*open\|443/tcp.*open\|8080/tcp.*open" "$scan_file" 2>/dev/null; then
+            chain_steps+=("$step. **Web Enumeration** → nikto + dirb + whatweb")
+            step=$((step + 1))
+            chain_steps+=("$step. **SQL Injection Test** → sqlmap --crawl=3")
+            step=$((step + 1))
+        fi
+        
+        if grep -q "445/tcp.*open\|139/tcp.*open" "$scan_file" 2>/dev/null; then
+            chain_steps+=("$step. **SMB Enumeration** → enum4linux -a + smbclient")
+            step=$((step + 1))
+            chain_steps+=("$step. **SMB Exploit Check** → EternalBlue (MS17-010)")
+            step=$((step + 1))
+        fi
+        
+        if grep -q "22/tcp.*open" "$scan_file" 2>/dev/null; then
+            chain_steps+=("$step. **SSH Audit** → ssh-audit + version check")
+            step=$((step + 1))
+            chain_steps+=("$step. **SSH Brute Force** → hydra -l root -P wordlist")
+            step=$((step + 1))
+        fi
+        
+        if grep -q "21/tcp.*open" "$scan_file" 2>/dev/null; then
+            chain_steps+=("$step. **FTP Check** → anonymous login + version exploit")
+            step=$((step + 1))
+        fi
+        
+        if grep -q "3306/tcp.*open\|5432/tcp.*open\|1433/tcp.*open" "$scan_file" 2>/dev/null; then
+            chain_steps+=("$step. **Database Attack** → brute force + default creds")
+            step=$((step + 1))
+        fi
+        
+        if grep -q "3389/tcp.*open" "$scan_file" 2>/dev/null; then
+            chain_steps+=("$step. **RDP Attack** → BlueKeep check + brute force")
+            step=$((step + 1))
+        fi
+    done
+    
+    # Step finale
+    chain_steps+=("$step. **Post-Exploitation** → privilege escalation + data exfiltration")
+    step=$((step + 1))
+    chain_steps+=("$step. **Report** → generazione report completo con evidenze")
+    
+    cat > "$report_file" << CHAINEOF
+# ⛓️ Attack Chain Report
+## Kali-AI v$VERSION — Cognitive Pentest Framework
+**Data:** $(date)
+**Target:** $target
+
+---
+
+## Catena di Attacco Proposta
+
+$(for s in "${chain_steps[@]}"; do echo "$s"; echo ""; done)
+
+## Visualizzazione Catena
+\`\`\`
+$(for s in "${chain_steps[@]}"; do
+    echo "  ┃ $s"
+    echo "  ┃   ↓"
+done)
+  ┗━━ PENTEST COMPLETATO
+\`\`\`
+
+---
+*Attack Chain generata da Kali-AI v$VERSION*
+CHAINEOF
+
+    think_result "Attack Chain: $((step - 1)) step generati → $report_file"
+    echo -e "${GREEN}⛓️ Attack Chain: $report_file${RESET}"
+    cat "$report_file"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# FASE 23: PASSIVE CREDENTIAL HARVESTER
+# ═══════════════════════════════════════════════════════════════
+
+credential_harvest() {
+    local scan_dir="${1:-$PENTEST_RESULTS_DIR}"
+    local report_file="$REPORTS_DIR/credentials_$(date +%Y%m%d_%H%M%S).md"
+    
+    think_phase "PASSIVE CREDENTIAL HARVESTER"
+    think_thought "Analizzo risultati per credenziali esposte e configurazioni deboli..."
+    
+    local findings=()
+    local cred_count=0
+    
+    cat > "$report_file" << CREDHEAD
+# 🔑 Credential & Configuration Analysis
+## Kali-AI v$VERSION — Cognitive Pentest Framework
+**Data:** $(date)
+
+---
+
+| Tipo | Dettaglio | Rischio | Fonte |
+|------|-----------|---------|-------|
+CREDHEAD
+
+    for f in "$scan_dir"/**/*.txt "$scan_dir"/**/*.xml "$scan_dir"/**/*.log 2>/dev/null; do
+        [[ ! -f "$f" ]] && continue
+        local fname=$(basename "$f")
+        
+        # Credenziali di default
+        if grep -qi "anonymous\s*login\|anonymous\s*allowed\|Anonymous FTP" "$f" 2>/dev/null; then
+            echo "| Default Creds | FTP Anonymous Access | CRITICO | $fname |" >> "$report_file"
+            cred_count=$((cred_count + 1))
+            think_observe "🔑 FTP Anonymous trovato in $fname"
+        fi
+        
+        if grep -qi "null session\|IPC\$.*OK\|guest\s*account" "$f" 2>/dev/null; then
+            echo "| Null Session | SMB Null/Guest Session | ALTO | $fname |" >> "$report_file"
+            cred_count=$((cred_count + 1))
+            think_observe "🔑 SMB Null Session in $fname"
+        fi
+        
+        if grep -qiE "admin:admin|root:root|admin:password|test:test|user:user" "$f" 2>/dev/null; then
+            echo "| Default Creds | Default username:password | CRITICO | $fname |" >> "$report_file"
+            cred_count=$((cred_count + 1))
+            think_observe "🔑 Credenziali default in $fname"
+        fi
+        
+        # Info disclosure
+        if grep -qi "server:.*apache\|server:.*nginx\|server:.*iis\|x-powered-by" "$f" 2>/dev/null; then
+            local server_info=$(grep -oi "server:.*\|x-powered-by:.*" "$f" 2>/dev/null | head -3 | tr '\n' '; ')
+            echo "| Info Disclosure | Server Header: $server_info | MEDIO | $fname |" >> "$report_file"
+            cred_count=$((cred_count + 1))
+        fi
+        
+        if grep -qi "phpinfo\|debug.*true\|stack\s*trace\|traceback" "$f" 2>/dev/null; then
+            echo "| Info Disclosure | Debug/Error info esposta | ALTO | $fname |" >> "$report_file"
+            cred_count=$((cred_count + 1))
+            think_observe "🔑 Debug info esposta in $fname"
+        fi
+        
+        # Email e nomi utente
+        local emails=$(grep -oiE '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' "$f" 2>/dev/null | sort -u | head -10)
+        if [[ -n "$emails" ]]; then
+            local email_count=$(echo "$emails" | wc -l)
+            echo "| Email Harvested | $email_count indirizzi email trovati | MEDIO | $fname |" >> "$report_file"
+            cred_count=$((cred_count + email_count))
+            think_observe "🔑 $email_count email trovate in $fname"
+        fi
+        
+        # Chiavi e token
+        if grep -qiE "api[_-]?key|secret[_-]?key|password\s*=|passwd\s*=|token\s*=" "$f" 2>/dev/null; then
+            echo "| Secrets | API key/password/token esposti | CRITICO | $fname |" >> "$report_file"
+            cred_count=$((cred_count + 1))
+            think_observe "🔑 Secrets esposti in $fname"
+        fi
+        
+        # SSL debole
+        if grep -qi "sslv2\|sslv3\|tlsv1\.0\|weak cipher\|rc4\|des-cbc" "$f" 2>/dev/null; then
+            echo "| Weak Crypto | SSL/TLS debole | ALTO | $fname |" >> "$report_file"
+            cred_count=$((cred_count + 1))
+        fi
+        
+        # SNMP community string
+        if grep -qi "public\|private" "$f" 2>/dev/null && echo "$fname" | grep -qi "snmp"; then
+            echo "| SNMP | Community string default (public/private) | CRITICO | $fname |" >> "$report_file"
+            cred_count=$((cred_count + 1))
+            think_observe "🔑 SNMP community string default in $fname"
+        fi
+        
+    done
+    
+    cat >> "$report_file" << CREDFOOT
+
+---
+
+## Sommario
+- **Credenziali/configurazioni deboli trovate:** $cred_count
+- **Raccomandazione:** Cambiare tutte le credenziali di default, disabilitare accessi anonimi, rimuovere info disclosure
+
+---
+*Credential Analysis generata da Kali-AI v$VERSION*
+CREDFOOT
+
+    think_result "Credential Harvest: $cred_count findings → $report_file"
+    echo -e "${GREEN}🔑 Credential Report: $report_file${RESET}"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# FASE 24: MULTI-TARGET ORCHESTRATOR
+# ═══════════════════════════════════════════════════════════════
+
+multi_target_pentest() {
+    local targets=("$@")
+    local master_dir="$PENTEST_DIR/multi_$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$master_dir"
+    
+    think_phase "MULTI-TARGET ORCHESTRATOR"
+    think_strategy "Lancio pentest paralleli su ${#targets[@]} target..."
+    
+    local pids=()
+    local target_dirs=()
+    
+    for target in "${targets[@]}"; do
+        local target_dir="$master_dir/target_$(echo $target | tr './' '_')"
+        mkdir -p "$target_dir"/{recon,scan,enum,vuln,report}
+        target_dirs+=("$target_dir")
+        
+        think_agent "Avvio pentest su $target..."
+        
+        (
+            PENTEST_RESULTS_DIR="$target_dir"
+            
+            # Fase 1: Recon
+            nmap -sn "$target" -oN "$target_dir/recon/hosts.txt" 2>/dev/null
+            
+            # Fase 2: Scan
+            local hosts=$(grep -oP '\d+\.\d+\.\d+\.\d+' "$target_dir/recon/hosts.txt" 2>/dev/null | sort -u)
+            for host in $hosts; do
+                nmap -sV -sC -O --top-ports 1000 "$host" -oN "$target_dir/scan/ports_${host}.txt" 2>/dev/null
+            done
+            
+            # Fase 3: Enum per servizio
+            for scan_file in "$target_dir"/scan/ports_*.txt; do
+                [[ ! -f "$scan_file" ]] && continue
+                local ip=$(basename "$scan_file" | grep -oP '\d+\.\d+\.\d+\.\d+')
+                
+                if grep -q "80/tcp.*open\|443/tcp.*open" "$scan_file" 2>/dev/null; then
+                    nikto -h "$ip" -o "$target_dir/enum/nikto_${ip}.txt" 2>/dev/null &
+                fi
+                if grep -q "445/tcp.*open" "$scan_file" 2>/dev/null; then
+                    enum4linux -a "$ip" > "$target_dir/enum/smb_${ip}.txt" 2>/dev/null &
+                fi
+                wait
+            done
+            
+            echo "PENTEST_DONE" > "$target_dir/.done"
+        ) &
+        
+        pids+=($!)
+        think_observe "PID $! avviato per $target"
+    done
+    
+    # Attendi completamento
+    think_thought "Attendo completamento di ${#pids[@]} pentest paralleli..."
+    local completed=0
+    while [[ $completed -lt ${#pids[@]} ]]; do
+        completed=0
+        for td in "${target_dirs[@]}"; do
+            [[ -f "$td/.done" ]] && completed=$((completed + 1))
+        done
+        think_observe "Completati: $completed/${#pids[@]}"
+        sleep 5
+    done
+    
+    # Attendi tutti i processi
+    for pid in "${pids[@]}"; do
+        wait "$pid" 2>/dev/null
+    done
+    
+    think_result "Tutti i pentest completati"
+    
+    # Genera report master
+    local master_report="$master_dir/master_report.md"
+    cat > "$master_report" << MASTEREOF
+# 🎯 Multi-Target Pentest Report
+## Kali-AI v$VERSION — Cognitive Pentest Framework
+**Data:** $(date)
+**Target analizzati:** ${#targets[@]}
+
+---
+
+MASTEREOF
+
+    for i in "${!targets[@]}"; do
+        local td="${target_dirs[$i]}"
+        local t="${targets[$i]}"
+        local hosts=$(grep -oP '\d+\.\d+\.\d+\.\d+' "$td/recon/hosts.txt" 2>/dev/null | wc -l)
+        local ports=$(grep -c "open" "$td"/scan/ports_*.txt 2>/dev/null || echo 0)
+        
+        echo "## Target: $t" >> "$master_report"
+        echo "- Host trovati: $hosts" >> "$master_report"
+        echo "- Porte aperte: $ports" >> "$master_report"
+        echo "- Risultati: $td" >> "$master_report"
+        echo "" >> "$master_report"
+    done
+    
+    echo "---" >> "$master_report"
+    echo "*Multi-Target Report generato da Kali-AI v$VERSION*" >> "$master_report"
+    
+    echo -e "${GREEN}🎯 Multi-Target Report: $master_report${RESET}"
+    think_result "Master Report: $master_report"
 }
