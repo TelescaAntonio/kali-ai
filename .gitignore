@@ -3,3 +3,4 @@
 .env
 .kali_ai_config
 *.backup
+api_keys.json
