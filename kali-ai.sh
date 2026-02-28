@@ -4331,3 +4331,1382 @@ REPBODY
     echo -e "${GREEN}║  📋 Evidence Log: $evidence_log${RESET}"
     echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════╝${RESET}"
 }
+
+# ═══════════════════════════════════════════════════════════════
+# FASE 28: CRIMINAL NETWORK INTELLIGENCE ENGINE (CNI)
+# ═══════════════════════════════════════════════════════════════
+# Il cuore di Kali-AI: dato un punto di partenza (email, telefono,
+# IP, username, wallet crypto), costruisce automaticamente il grafo
+# delle connessioni, identifica le identità collegate, traccia i
+# flussi e identifica i nodi centrali della rete.
+# ═══════════════════════════════════════════════════════════════
+
+CNI_DIR="$BASE_DIR/cni_investigations"
+
+cni_init_case() {
+    local case_id="CNI_$(date +%Y%m%d_%H%M%S)"
+    local case_dir="$CNI_DIR/$case_id"
+    mkdir -p "$case_dir"/{graph,entities,connections,timeline,evidence,reports,crypto,correlation}
+    
+    # Database grafo entità
+    echo '{"nodes":[],"edges":[],"clusters":[]}' > "$case_dir/graph/network_graph.json"
+    # Database entità scoperte
+    echo '{"emails":[],"phones":[],"ips":[],"usernames":[],"domains":[],"wallets":[],"names":[],"addresses":[]}' > "$case_dir/entities/entity_db.json"
+    # Timeline eventi
+    echo '[]' > "$case_dir/timeline/events.json"
+    
+    echo "$case_id"
+    echo "$case_dir"
+}
+
+cni_add_entity() {
+    local case_dir="$1"
+    local entity_type="$2"  # email, phone, ip, username, domain, wallet, name
+    local entity_value="$3"
+    local source="$4"
+    local confidence="${5:-medium}"
+    
+    local db="$case_dir/entities/entity_db.json"
+    local graph="$case_dir/graph/network_graph.json"
+    
+    # Check duplicati
+    if jq -e --arg v "$entity_value" --arg t "$entity_type" '.[$t] | index($v)' "$db" &>/dev/null; then
+        return 0  # Già presente
+    fi
+    
+    # Aggiungi a entity_db
+    local updated=$(jq --arg t "$entity_type" --arg v "$entity_value" '.[$t] += [$v]' "$db")
+    echo "$updated" > "$db"
+    
+    # Aggiungi nodo al grafo
+    local node_id=$(echo "$entity_value" | md5sum | cut -c1-12)
+    local node=$(jq -cn \
+        --arg id "$node_id" \
+        --arg type "$entity_type" \
+        --arg value "$entity_value" \
+        --arg src "$source" \
+        --arg conf "$confidence" \
+        --arg time "$(date -Iseconds)" \
+        '{id:$id, type:$type, value:$value, source:$src, confidence:$conf, discovered:$time}')
+    
+    local graph_updated=$(jq --argjson n "$node" '.nodes += [$n]' "$graph")
+    echo "$graph_updated" > "$graph"
+    
+    think_observe "CNI: Nuova entità [$entity_type] $entity_value (confidence: $confidence)"
+}
+
+cni_add_connection() {
+    local case_dir="$1"
+    local from_value="$2"
+    local to_value="$3"
+    local relation="$4"  # owns, uses, contacted, linked_to, same_person, hosted_on
+    local evidence="$5"
+    local strength="${6:-medium}"
+    
+    local graph="$case_dir/graph/network_graph.json"
+    
+    local from_id=$(echo "$from_value" | md5sum | cut -c1-12)
+    local to_id=$(echo "$to_value" | md5sum | cut -c1-12)
+    
+    local edge=$(jq -cn \
+        --arg fid "$from_id" \
+        --arg tid "$to_id" \
+        --arg fv "$from_value" \
+        --arg tv "$to_value" \
+        --arg rel "$relation" \
+        --arg ev "$evidence" \
+        --arg str "$strength" \
+        --arg time "$(date -Iseconds)" \
+        '{from:$fid, to:$tid, from_value:$fv, to_value:$tv, relation:$rel, evidence:$ev, strength:$str, discovered:$time}')
+    
+    local graph_updated=$(jq --argjson e "$edge" '.edges += [$e]' "$graph")
+    echo "$graph_updated" > "$graph"
+    
+    think_observe "CNI: Connessione [$from_value] --($relation)--> [$to_value]"
+}
+
+cni_add_event() {
+    local case_dir="$1"
+    local event_type="$2"
+    local description="$3"
+    local entities="$4"
+    
+    local timeline="$case_dir/timeline/events.json"
+    
+    local event=$(jq -cn \
+        --arg type "$event_type" \
+        --arg desc "$description" \
+        --arg ent "$entities" \
+        --arg time "$(date -Iseconds)" \
+        '{timestamp:$time, type:$type, description:$desc, entities:$ent}')
+    
+    local updated=$(jq --argjson e "$event" '. += [$e]' "$timeline")
+    echo "$updated" > "$timeline"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# CNI DEEP INVESTIGATION AGENTS
+# ═══════════════════════════════════════════════════════════════
+
+cni_deep_email() {
+    local case_dir="$1"
+    local email="$2"
+    local depth="${3:-2}"
+    
+    think_agent "CNI Deep Agent: Email Investigation — $email (depth $depth)"
+    
+    local domain=$(echo "$email" | grep -oP '@\K.*')
+    local user=$(echo "$email" | grep -oP '^[^@]+')
+    
+    # Registra entità iniziale
+    cni_add_entity "$case_dir" "email" "$email" "input" "high"
+    cni_add_entity "$case_dir" "domain" "$domain" "extracted_from_email" "high"
+    cni_add_entity "$case_dir" "username" "$user" "extracted_from_email" "medium"
+    cni_add_connection "$case_dir" "$email" "$domain" "belongs_to" "Email domain extraction" "high"
+    cni_add_connection "$case_dir" "$email" "$user" "has_username" "Email username extraction" "high"
+    
+    # WHOIS deep
+    local whois_data=$(whois "$domain" 2>/dev/null)
+    
+    local registrant_email=$(echo "$whois_data" | grep -ioP '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' | sort -u)
+    for reg_email in $registrant_email; do
+        [[ "$reg_email" == "$email" ]] && continue
+        cni_add_entity "$case_dir" "email" "$reg_email" "whois_registrant" "high"
+        cni_add_connection "$case_dir" "$domain" "$reg_email" "registered_by" "WHOIS record" "high"
+        cni_add_event "$case_dir" "discovery" "Email registrant trovata via WHOIS: $reg_email" "$domain,$reg_email"
+    done
+    
+    local registrant_name=$(echo "$whois_data" | grep -iP "registrant name:" | head -1 | sed 's/.*: //')
+    if [[ -n "$registrant_name" && "$registrant_name" != "REDACTED"* ]]; then
+        cni_add_entity "$case_dir" "name" "$registrant_name" "whois" "medium"
+        cni_add_connection "$case_dir" "$domain" "$registrant_name" "registered_by" "WHOIS registrant name" "medium"
+    fi
+    
+    local registrant_phone=$(echo "$whois_data" | grep -iP "phone:" | head -1 | sed 's/.*: //' | tr -d ' ')
+    if [[ -n "$registrant_phone" && "$registrant_phone" != "REDACTED"* ]]; then
+        cni_add_entity "$case_dir" "phone" "$registrant_phone" "whois" "medium"
+        cni_add_connection "$case_dir" "$domain" "$registrant_phone" "registered_with" "WHOIS phone" "medium"
+    fi
+    
+    local registrant_addr=$(echo "$whois_data" | grep -iP "registrant street:|address:" | head -1 | sed 's/.*: //')
+    if [[ -n "$registrant_addr" && "$registrant_addr" != "REDACTED"* ]]; then
+        cni_add_entity "$case_dir" "address" "$registrant_addr" "whois" "medium"
+        cni_add_connection "$case_dir" "$domain" "$registrant_addr" "located_at" "WHOIS address" "medium"
+    fi
+    
+    # IP e reverse
+    local ip=$(dig +short "$domain" A 2>/dev/null | head -1)
+    if [[ -n "$ip" ]]; then
+        cni_add_entity "$case_dir" "ip" "$ip" "dns_resolution" "high"
+        cni_add_connection "$case_dir" "$domain" "$ip" "resolves_to" "DNS A record" "high"
+        
+        # Reverse IP — altri domini sullo stesso server
+        local reverse_domains=$(curl -s "https://api.hackertarget.com/reverseiplookup/?q=$ip" 2>/dev/null | head -20)
+        for rdomain in $reverse_domains; do
+            [[ "$rdomain" == "$domain" || "$rdomain" == "error"* || -z "$rdomain" ]] && continue
+            cni_add_entity "$case_dir" "domain" "$rdomain" "reverse_ip" "medium"
+            cni_add_connection "$case_dir" "$ip" "$rdomain" "hosts" "Reverse IP lookup" "medium"
+            cni_add_connection "$case_dir" "$domain" "$rdomain" "shared_hosting" "Same IP address" "medium"
+            
+            # Recursione depth 2: cerca WHOIS dei domini collegati
+            if [[ $depth -gt 1 ]]; then
+                local linked_whois=$(whois "$rdomain" 2>/dev/null)
+                local linked_emails=$(echo "$linked_whois" | grep -ioP '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' | sort -u)
+                for le in $linked_emails; do
+                    cni_add_entity "$case_dir" "email" "$le" "linked_domain_whois" "low"
+                    cni_add_connection "$case_dir" "$rdomain" "$le" "registered_by" "Linked domain WHOIS" "low"
+                done
+            fi
+        done
+        
+        # Geolocation
+        local geoip=$(curl -s "http://ip-api.com/json/$ip?fields=status,country,regionName,city,isp,org,as,proxy,hosting" 2>/dev/null)
+        local geo_isp=$(echo "$geoip" | jq -r '.isp // "N/A"')
+        local geo_org=$(echo "$geoip" | jq -r '.org // "N/A"')
+        local geo_country=$(echo "$geoip" | jq -r '.country // "N/A"')
+        local geo_city=$(echo "$geoip" | jq -r '.city // "N/A"')
+        echo "$geoip" > "$case_dir/evidence/geoip_${ip}.json"
+        
+        cni_add_event "$case_dir" "geolocation" "IP $ip → $geo_country/$geo_city ISP:$geo_isp" "$ip"
+    fi
+    
+    # Subdomains discovery per espandere la rete
+    local subs=$(curl -s "https://crt.sh/?q=%25.$domain&output=json" 2>/dev/null | \
+        jq -r '.[].name_value' 2>/dev/null | sort -u | grep -v "^\*" | head -30)
+    for sub in $subs; do
+        [[ -z "$sub" ]] && continue
+        cni_add_entity "$case_dir" "domain" "$sub" "certificate_transparency" "medium"
+        cni_add_connection "$case_dir" "$domain" "$sub" "has_subdomain" "CT log (crt.sh)" "high"
+    done
+    
+    # Social media lookup per username
+    local social_platforms="facebook.com twitter.com instagram.com github.com reddit.com linkedin.com/in t.me tiktok.com medium.com keybase.io"
+    for platform in $social_platforms; do
+        local url="https://www.$platform/$user"
+        [[ "$platform" == "t.me" ]] && url="https://t.me/$user"
+        local http_code=$(curl -sL -o /dev/null -w "%{http_code}" --max-time 5 "$url" 2>/dev/null)
+        if [[ "$http_code" == "200" ]]; then
+            cni_add_entity "$case_dir" "username" "$platform/$user" "social_media_check" "medium"
+            cni_add_connection "$case_dir" "$user" "$platform/$user" "has_profile" "HTTP 200 response" "medium"
+            cni_add_event "$case_dir" "social_discovery" "Profilo social trovato: $url" "$user,$platform"
+        fi
+    done
+    
+    # Scraping pagine web del dominio per email/telefoni aggiuntivi
+    for page in "" "/about" "/contact" "/team" "/impressum" "/privacy-policy"; do
+        local content=$(curl -sL --max-time 8 "https://$domain$page" 2>/dev/null)
+        [[ -z "$content" ]] && continue
+        
+        # Email aggiuntive
+        local found_emails=$(echo "$content" | grep -oiE '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' | sort -u)
+        for fe in $found_emails; do
+            cni_add_entity "$case_dir" "email" "$fe" "web_scraping_$domain$page" "medium"
+            cni_add_connection "$case_dir" "$domain" "$fe" "mentions" "Found on $domain$page" "medium"
+        done
+        
+        # Telefoni
+        local found_phones=$(echo "$content" | grep -oP '[\+]?[(]?[0-9]{1,4}[)]?[-\s\./0-9]{8,15}' | sort -u | head -10)
+        for fp in $found_phones; do
+            local clean_phone=$(echo "$fp" | tr -d ' .-()' )
+            [[ ${#clean_phone} -lt 8 ]] && continue
+            cni_add_entity "$case_dir" "phone" "$fp" "web_scraping_$domain$page" "medium"
+            cni_add_connection "$case_dir" "$domain" "$fp" "mentions" "Found on $domain$page" "medium"
+        done
+        
+        # Nomi persone (pattern base)
+        local found_names=$(echo "$content" | grep -oP '(?:CEO|CTO|Founder|Director|Manager|Owner)[:\s]+[A-Z][a-z]+ [A-Z][a-z]+' | head -5)
+        for fn in $found_names; do
+            cni_add_entity "$case_dir" "name" "$fn" "web_scraping_$domain$page" "low"
+            cni_add_connection "$case_dir" "$domain" "$fn" "associated_with" "Found on website" "low"
+        done
+        
+        # Link a social media
+        local social_links=$(echo "$content" | grep -oP 'https?://(www\.)?(facebook|twitter|instagram|linkedin|youtube|tiktok|t\.me|github)[^"'"'"'\s<>]+' | sort -u)
+        for sl in $social_links; do
+            cni_add_entity "$case_dir" "username" "$sl" "web_link" "high"
+            cni_add_connection "$case_dir" "$domain" "$sl" "linked_social" "Website link" "high"
+        done
+    done
+    
+    # Google dorking per informazioni aggiuntive
+    local dork_results=$(curl -s "https://www.google.com/search?q=%22$email%22&num=10" 2>/dev/null | \
+        grep -oP 'https?://[^"'"'"'\s<>]+' | grep -v "google\|gstatic\|googleapis" | sort -u | head -10)
+    for dork_url in $dork_results; do
+        cni_add_entity "$case_dir" "domain" "$dork_url" "google_dork" "low"
+        cni_add_connection "$case_dir" "$email" "$dork_url" "mentioned_on" "Google search result" "low"
+    done
+    
+    think_result "CNI Deep Email: investigazione completata per $email"
+}
+
+cni_deep_phone() {
+    local case_dir="$1"
+    local phone="$2"
+    
+    think_agent "CNI Deep Agent: Phone Investigation — $phone"
+    
+    cni_add_entity "$case_dir" "phone" "$phone" "input" "high"
+    
+    # Cerca il numero nel web
+    local clean=$(echo "$phone" | tr -d ' +-.()' )
+    
+    local web_results=$(curl -s "https://www.google.com/search?q=%22$phone%22+OR+%22$clean%22&num=10" 2>/dev/null | \
+        grep -oP 'https?://[^"'"'"'\s<>]+' | grep -v "google\|gstatic" | sort -u | head -10)
+    
+    for url in $web_results; do
+        local domain=$(echo "$url" | grep -oP '(?<=://)[^/]+')
+        cni_add_entity "$case_dir" "domain" "$domain" "phone_web_search" "low"
+        cni_add_connection "$case_dir" "$phone" "$domain" "found_on" "Web search for phone number" "low"
+        
+        # Scrapa la pagina per altre informazioni
+        local page_content=$(curl -sL --max-time 8 "$url" 2>/dev/null)
+        local page_emails=$(echo "$page_content" | grep -oiE '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' | sort -u | head -5)
+        for pe in $page_emails; do
+            cni_add_entity "$case_dir" "email" "$pe" "linked_via_phone" "medium"
+            cni_add_connection "$case_dir" "$phone" "$pe" "associated_with" "Found on same page" "medium"
+        done
+    done
+    
+    think_result "CNI Deep Phone: investigazione completata per $phone"
+}
+
+cni_deep_ip() {
+    local case_dir="$1"
+    local ip="$2"
+    
+    think_agent "CNI Deep Agent: IP Investigation — $ip"
+    
+    cni_add_entity "$case_dir" "ip" "$ip" "input" "high"
+    
+    # Geolocation
+    local geoip=$(curl -s "http://ip-api.com/json/$ip?fields=66846719" 2>/dev/null)
+    echo "$geoip" > "$case_dir/evidence/geoip_${ip}.json"
+    
+    local geo_country=$(echo "$geoip" | jq -r '.country // "N/A"')
+    local geo_city=$(echo "$geoip" | jq -r '.city // "N/A"')
+    local geo_isp=$(echo "$geoip" | jq -r '.isp // "N/A"')
+    local geo_org=$(echo "$geoip" | jq -r '.org // "N/A"')
+    local geo_as=$(echo "$geoip" | jq -r '.as // "N/A"')
+    local geo_proxy=$(echo "$geoip" | jq -r '.proxy // false')
+    local geo_hosting=$(echo "$geoip" | jq -r '.hosting // false')
+    local geo_mobile=$(echo "$geoip" | jq -r '.mobile // false')
+    
+    cni_add_event "$case_dir" "geolocation" "IP $ip: $geo_country/$geo_city, ISP:$geo_isp, Proxy:$geo_proxy" "$ip"
+    
+    # Reverse DNS
+    local rdns=$(dig +short -x "$ip" 2>/dev/null)
+    if [[ -n "$rdns" ]]; then
+        cni_add_entity "$case_dir" "domain" "$rdns" "reverse_dns" "high"
+        cni_add_connection "$case_dir" "$ip" "$rdns" "reverse_dns" "PTR record" "high"
+    fi
+    
+    # Reverse IP — tutti i domini su questo IP
+    local rev_domains=$(curl -s "https://api.hackertarget.com/reverseiplookup/?q=$ip" 2>/dev/null | head -30)
+    for rd in $rev_domains; do
+        [[ -z "$rd" || "$rd" == "error"* ]] && continue
+        cni_add_entity "$case_dir" "domain" "$rd" "reverse_ip" "high"
+        cni_add_connection "$case_dir" "$ip" "$rd" "hosts" "Reverse IP lookup" "high"
+    done
+    
+    # Port scan
+    nmap -sV --top-ports 200 -T4 "$ip" -oN "$case_dir/evidence/portscan_${ip}.txt" 2>/dev/null
+    
+    # Shodan-like via headers
+    for port in 80 443 8080 8443; do
+        local headers=$(curl -sI --max-time 5 "http://$ip:$port" 2>/dev/null)
+        [[ -n "$headers" ]] && echo "Port $port headers:\n$headers" >> "$case_dir/evidence/headers_${ip}.txt"
+    done
+    
+    # VPN detection avanzata
+    local vpn_score=0
+    local vpn_reasons=""
+    
+    [[ "$geo_proxy" == "true" ]] && { vpn_score=$((vpn_score + 30)); vpn_reasons="$vpn_reasons|Proxy flag attivo"; }
+    [[ "$geo_hosting" == "true" ]] && { vpn_score=$((vpn_score + 20)); vpn_reasons="$vpn_reasons|IP hosting"; }
+    echo "$geo_as" | grep -qi "nord\|express\|surfshark\|proton\|mullvad\|cyberghost\|pia\|ipvanish\|vypr\|hide\.me\|windscribe" && \
+        { vpn_score=$((vpn_score + 40)); vpn_reasons="$vpn_reasons|ASN VPN commerciale"; }
+    echo "$geo_org" | grep -qi "hosting\|cloud\|server\|data center\|colocation" && \
+        { vpn_score=$((vpn_score + 15)); vpn_reasons="$vpn_reasons|Organizzazione hosting/cloud"; }
+    echo "$rdns" | grep -qi "vpn\|proxy\|tor\|exit\|relay" && \
+        { vpn_score=$((vpn_score + 25)); vpn_reasons="$vpn_reasons|Reverse DNS indica VPN/Proxy/Tor"; }
+    
+    # Check Tor exit node
+    local tor_check=$(curl -s "https://check.torproject.org/torbulkexitlist" 2>/dev/null | grep -c "^$ip$")
+    [[ $tor_check -gt 0 ]] && { vpn_score=$((vpn_score + 50)); vpn_reasons="$vpn_reasons|TOR EXIT NODE CONFERMATO"; }
+    
+    echo "VPN_SCORE=$vpn_score" > "$case_dir/evidence/vpn_analysis_${ip}.txt"
+    echo "VPN_REASONS=$vpn_reasons" >> "$case_dir/evidence/vpn_analysis_${ip}.txt"
+    
+    cni_add_event "$case_dir" "vpn_analysis" "IP $ip VPN Score: $vpn_score/100, Reasons: $vpn_reasons" "$ip"
+    
+    think_result "CNI Deep IP: $ip → $geo_country/$geo_city, VPN Score: $vpn_score/100"
+}
+
+cni_deep_wallet() {
+    local case_dir="$1"
+    local wallet="$2"
+    local chain="${3:-auto}"
+    
+    think_agent "CNI Deep Agent: Crypto Wallet Investigation — $wallet"
+    
+    cni_add_entity "$case_dir" "wallet" "$wallet" "input" "high"
+    
+    # Detect chain
+    if [[ "$chain" == "auto" ]]; then
+        if [[ "$wallet" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
+            chain="ethereum"
+        elif [[ "$wallet" =~ ^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$ ]]; then
+            chain="bitcoin"
+        elif [[ "$wallet" =~ ^bc1[a-zA-HJ-NP-Z0-9]{25,89}$ ]]; then
+            chain="bitcoin"
+        elif [[ "$wallet" =~ ^T[A-Za-z1-9]{33}$ ]]; then
+            chain="tron"
+        fi
+    fi
+    
+    case "$chain" in
+        "ethereum"|"eth"|"bsc")
+            # Etherscan / BscScan API
+            local api_url="https://api.etherscan.io/api"
+            [[ "$chain" == "bsc" ]] && api_url="https://api.bscscan.com/api"
+            
+            # Balance
+            local balance=$(curl -s "${api_url}?module=account&action=balance&address=$wallet&tag=latest" 2>/dev/null | \
+                jq -r '.result // "0"' 2>/dev/null)
+            local balance_eth=$(echo "scale=6; $balance / 1000000000000000000" | bc 2>/dev/null || echo "N/A")
+            
+            # Transazioni recenti
+            local txs=$(curl -s "${api_url}?module=account&action=txlist&address=$wallet&startblock=0&endblock=99999999&page=1&offset=20&sort=desc" 2>/dev/null)
+            echo "$txs" > "$case_dir/crypto/txlist_${wallet}.json"
+            
+            # Estrai indirizzi collegati
+            local connected_wallets=$(echo "$txs" | jq -r '.result[]? | select(.from != "" and .to != "") | .from + "\n" + .to' 2>/dev/null | \
+                sort -u | grep -v "^$wallet$" | head -20)
+            
+            for cw in $connected_wallets; do
+                [[ -z "$cw" ]] && continue
+                cni_add_entity "$case_dir" "wallet" "$cw" "blockchain_transaction" "high"
+                
+                # Determina direzione
+                local is_sender=$(echo "$txs" | jq -r --arg w "$cw" '.result[] | select(.from == $w) | .hash' 2>/dev/null | head -1)
+                local is_receiver=$(echo "$txs" | jq -r --arg w "$cw" '.result[] | select(.to == $w) | .hash' 2>/dev/null | head -1)
+                
+                [[ -n "$is_sender" ]] && cni_add_connection "$case_dir" "$cw" "$wallet" "sent_funds" "Blockchain TX" "high"
+                [[ -n "$is_receiver" ]] && cni_add_connection "$case_dir" "$wallet" "$cw" "sent_funds" "Blockchain TX" "high"
+            done
+            
+            # Token transfers
+            local tokens=$(curl -s "${api_url}?module=account&action=tokentx&address=$wallet&page=1&offset=10&sort=desc" 2>/dev/null)
+            echo "$tokens" > "$case_dir/crypto/tokens_${wallet}.json"
+            
+            cni_add_event "$case_dir" "crypto_analysis" "Wallet $wallet: Balance $balance_eth ETH, $(echo "$connected_wallets" | wc -w) connected wallets" "$wallet"
+            ;;
+            
+        "bitcoin"|"btc")
+            # Blockchain.info API
+            local btc_data=$(curl -s "https://blockchain.info/rawaddr/$wallet?limit=20" 2>/dev/null)
+            echo "$btc_data" > "$case_dir/crypto/btc_${wallet}.json"
+            
+            local btc_balance=$(echo "$btc_data" | jq -r '.final_balance // 0' 2>/dev/null)
+            local btc_balance_btc=$(echo "scale=8; $btc_balance / 100000000" | bc 2>/dev/null || echo "N/A")
+            local btc_tx_count=$(echo "$btc_data" | jq -r '.n_tx // 0' 2>/dev/null)
+            
+            # Estrai indirizzi collegati dalle transazioni
+            local btc_connected=$(echo "$btc_data" | jq -r '.txs[]?.inputs[]?.prev_out?.addr // empty, .txs[]?.out[]?.addr // empty' 2>/dev/null | \
+                sort -u | grep -v "^$wallet$" | head -20)
+            
+            for bw in $btc_connected; do
+                [[ -z "$bw" ]] && continue
+                cni_add_entity "$case_dir" "wallet" "$bw" "bitcoin_transaction" "high"
+                cni_add_connection "$case_dir" "$wallet" "$bw" "transacted_with" "Bitcoin TX" "high"
+            done
+            
+            cni_add_event "$case_dir" "crypto_analysis" "BTC Wallet $wallet: Balance $btc_balance_btc BTC, $btc_tx_count TX, $(echo "$btc_connected" | wc -w) connected" "$wallet"
+            ;;
+    esac
+    
+    think_result "CNI Crypto: wallet $wallet analizzato, chain: $chain"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# CNI GRAPH ANALYSIS & CORRELATION ENGINE
+# ═══════════════════════════════════════════════════════════════
+
+cni_analyze_graph() {
+    local case_dir="$1"
+    local graph="$case_dir/graph/network_graph.json"
+    local analysis_file="$case_dir/correlation/graph_analysis.txt"
+    
+    think_phase "CNI GRAPH ANALYSIS"
+    think_thought "Analizzo il grafo delle connessioni per trovare pattern..."
+    
+    local node_count=$(jq '.nodes | length' "$graph" 2>/dev/null || echo 0)
+    local edge_count=$(jq '.edges | length' "$graph" 2>/dev/null || echo 0)
+    
+    # Calcola i nodi più connessi (hub della rete)
+    local hub_analysis=$(jq -r '
+        .edges as $edges |
+        [.nodes[].value] | unique | map(. as $v |
+            {value: $v,
+             connections: ([$edges[] | select(.from_value == $v or .to_value == $v)] | length),
+             outgoing: ([$edges[] | select(.from_value == $v)] | length),
+             incoming: ([$edges[] | select(.to_value == $v)] | length)
+            }
+        ) | sort_by(-.connections) | .[:15] |
+        .[] | "\(.value) | Connessioni: \(.connections) (OUT:\(.outgoing) IN:\(.incoming))"
+    ' "$graph" 2>/dev/null)
+    
+    # Trova cluster di identità (nodi collegati da "same_person", "owns", "has_username")
+    local identity_links=$(jq -r '
+        .edges[] | select(.relation == "same_person" or .relation == "owns" or .relation == "has_username" or .relation == "registered_by") |
+        "\(.from_value) ←[\(.relation)]→ \(.to_value)"
+    ' "$graph" 2>/dev/null)
+    
+    # Trova path tra entità (catene di connessione)
+    local strong_connections=$(jq -r '
+        .edges[] | select(.strength == "high") |
+        "\(.from_value) --[\(.relation)]--> \(.to_value) [Evidenza: \(.evidence)]"
+    ' "$graph" 2>/dev/null)
+    
+    # Analisi per tipo di entità
+    local email_count=$(jq '[.nodes[] | select(.type == "email")] | length' "$graph" 2>/dev/null || echo 0)
+    local phone_count=$(jq '[.nodes[] | select(.type == "phone")] | length' "$graph" 2>/dev/null || echo 0)
+    local ip_count=$(jq '[.nodes[] | select(.type == "ip")] | length' "$graph" 2>/dev/null || echo 0)
+    local domain_count=$(jq '[.nodes[] | select(.type == "domain")] | length' "$graph" 2>/dev/null || echo 0)
+    local wallet_count=$(jq '[.nodes[] | select(.type == "wallet")] | length' "$graph" 2>/dev/null || echo 0)
+    local username_count=$(jq '[.nodes[] | select(.type == "username")] | length' "$graph" 2>/dev/null || echo 0)
+    local name_count=$(jq '[.nodes[] | select(.type == "name")] | length' "$graph" 2>/dev/null || echo 0)
+    
+    # Trova entità ponte (collegano cluster diversi)
+    local bridge_entities=$(jq -r '
+        .edges as $edges |
+        [.nodes[].value] | unique | map(. as $v |
+            {value: $v,
+             unique_connections: ([$edges[] | select(.from_value == $v or .to_value == $v) | 
+                if .from_value == $v then .to_value else .from_value end] | unique | length)
+            }
+        ) | sort_by(-.unique_connections) | .[:10] |
+        .[] | select(.unique_connections > 2) | "\(.value) → collega \(.unique_connections) entità diverse"
+    ' "$graph" 2>/dev/null)
+    
+    # Cross-reference: stesse entità appaiono in contesti diversi
+    local cross_refs=$(jq -r '
+        .edges | group_by(.to_value) | map(select(length > 1)) |
+        .[] | "[\(.[0].to_value)] referenziato da \(length) fonti: \([.[].from_value] | join(", "))"
+    ' "$graph" 2>/dev/null | head -20)
+
+    cat > "$analysis_file" << ANALYSISEOF
+═══════════════════════════════════════════════════════════════
+CNI GRAPH ANALYSIS — ANALISI RETE CRIMINALE
+═══════════════════════════════════════════════════════════════
+Data: $(date)
+
+STATISTICHE GRAFO
+  Nodi totali:      $node_count
+  Connessioni:      $edge_count
+  Email:            $email_count
+  Telefoni:         $phone_count
+  IP:               $ip_count
+  Domini:           $domain_count
+  Wallet crypto:    $wallet_count
+  Username:         $username_count
+  Nomi:             $name_count
+
+═══════════════════════════════════════════════════════════════
+HUB DELLA RETE (nodi più connessi = probabili identità centrali)
+═══════════════════════════════════════════════════════════════
+$hub_analysis
+
+═══════════════════════════════════════════════════════════════
+ENTITÀ PONTE (collegano parti diverse della rete)
+═══════════════════════════════════════════════════════════════
+$bridge_entities
+
+═══════════════════════════════════════════════════════════════
+CONNESSIONI AD ALTA AFFIDABILITÀ
+═══════════════════════════════════════════════════════════════
+$strong_connections
+
+═══════════════════════════════════════════════════════════════
+LINK DI IDENTITÀ (possibili stessa persona)
+═══════════════════════════════════════════════════════════════
+$identity_links
+
+═══════════════════════════════════════════════════════════════
+CROSS-REFERENCE (entità referenziate da più fonti)
+═══════════════════════════════════════════════════════════════
+$cross_refs
+
+ANALYSISEOF
+
+    think_result "Graph Analysis: $node_count nodi, $edge_count connessioni, hub e bridge identificati"
+    echo "$analysis_file"
+}
+
+cni_generate_visual_graph() {
+    local case_dir="$1"
+    local graph="$case_dir/graph/network_graph.json"
+    local dot_file="$case_dir/graph/criminal_network.dot"
+    local png_file="$case_dir/graph/criminal_network.png"
+    local svg_file="$case_dir/graph/criminal_network.svg"
+    
+    tool_ensure "graphviz" "true"
+    
+    think_phase "CNI VISUAL GRAPH GENERATION"
+    
+    cat > "$dot_file" << 'DOTSTART'
+digraph CriminalNetwork {
+    rankdir=LR;
+    bgcolor="#0a0a1a";
+    node [style=filled, fontname="Courier New", fontsize=10, fontcolor=white];
+    edge [fontname="Courier New", fontsize=8, fontcolor="#00ff41"];
+    
+    label="KALI-AI — Criminal Network Intelligence Map";
+    labelloc=t;
+    fontname="Courier New Bold";
+    fontsize=16;
+    fontcolor="#00ff41";
+    
+DOTSTART
+
+    # Colori per tipo
+    # email=rosso, phone=arancione, ip=blu, domain=verde, wallet=giallo, username=viola, name=ciano
+    
+    jq -r '.nodes[] | 
+        if .type == "email" then "\(.id) [label=\"📧 \(.value)\", fillcolor=\"#e94560\", shape=box];"
+        elif .type == "phone" then "\(.id) [label=\"📱 \(.value)\", fillcolor=\"#f5a623\", shape=box];"
+        elif .type == "ip" then "\(.id) [label=\"🌐 \(.value)\", fillcolor=\"#1a56db\", shape=octagon];"
+        elif .type == "domain" then "\(.id) [label=\"🔗 \(.value)\", fillcolor=\"#00a86b\", shape=ellipse];"
+        elif .type == "wallet" then "\(.id) [label=\"💰 \(.value | .[0:16])...\", fillcolor=\"#d4a017\", shape=hexagon];"
+        elif .type == "username" then "\(.id) [label=\"👤 \(.value)\", fillcolor=\"#9b59b6\", shape=diamond];"
+        elif .type == "name" then "\(.id) [label=\"🏷️ \(.value)\", fillcolor=\"#17a2b8\", shape=doubleoctagon];"
+        else "\(.id) [label=\"\(.value)\", fillcolor=\"#333333\", shape=box];"
+        end
+    ' "$graph" 2>/dev/null >> "$dot_file"
+    
+    jq -r '.edges[] |
+        if .strength == "high" then "\(.from) -> \(.to) [label=\"\(.relation)\", color=\"#ff0000\", penwidth=2];"
+        elif .strength == "medium" then "\(.from) -> \(.to) [label=\"\(.relation)\", color=\"#f5a623\", penwidth=1.5];"
+        else "\(.from) -> \(.to) [label=\"\(.relation)\", color=\"#00ff41\", style=dashed];"
+        end
+    ' "$graph" 2>/dev/null >> "$dot_file"
+    
+    echo "}" >> "$dot_file"
+    
+    if command -v dot &>/dev/null; then
+        dot -Tpng -Gdpi=150 "$dot_file" -o "$png_file" 2>/dev/null
+        dot -Tsvg "$dot_file" -o "$svg_file" 2>/dev/null
+        think_result "Grafo visuale generato: $png_file"
+    fi
+}
+
+# ═══════════════════════════════════════════════════════════════
+# CNI MASTER INVESTIGATION — ENTRY POINT PRINCIPALE
+# ═══════════════════════════════════════════════════════════════
+
+cni_investigate() {
+    local input="$1"
+    local description="${2:-Indagine CNI automatica}"
+    
+    think_phase "═══ CRIMINAL NETWORK INTELLIGENCE ═══"
+    think_strategy "Avvio indagine completa su: $input"
+    think_thought "Descrizione caso: $description"
+    
+    # Inizializza caso
+    local case_info=$(cni_init_case)
+    local case_id=$(echo "$case_info" | head -1)
+    local case_dir=$(echo "$case_info" | tail -1)
+    
+    think_observe "Caso creato: $case_id"
+    think_observe "Directory: $case_dir"
+    
+    # Detect tipo di input
+    local input_type="unknown"
+    if echo "$input" | grep -qP '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'; then
+        input_type="email"
+    elif echo "$input" | grep -qP '^\+?[0-9\s\-\.\(\)]{8,}$'; then
+        input_type="phone"
+    elif echo "$input" | grep -qP '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'; then
+        input_type="ip"
+    elif echo "$input" | grep -qP '^0x[a-fA-F0-9]{40}$'; then
+        input_type="wallet_eth"
+    elif echo "$input" | grep -qP '^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$|^bc1[a-zA-HJ-NP-Z0-9]{25,89}$'; then
+        input_type="wallet_btc"
+    elif echo "$input" | grep -qP '^T[A-Za-z1-9]{33}$'; then
+        input_type="wallet_tron"
+    elif echo "$input" | grep -qP '^[a-zA-Z0-9][a-zA-Z0-9\.-]+\.[a-zA-Z]{2,}$'; then
+        input_type="domain"
+    else
+        input_type="username"
+    fi
+    
+    think_decide "Input riconosciuto come: $input_type"
+    cni_add_event "$case_dir" "case_start" "Indagine avviata su $input ($input_type): $description" "$input"
+    
+    # Lancia agenti in base al tipo di input
+    case "$input_type" in
+        "email")
+            think_strategy "Lancio investigazione email multi-livello..."
+            
+            # Agent 1: Deep email investigation
+            cni_deep_email "$case_dir" "$input" 2 &
+            local pid1=$!
+            
+            # Agent 2: Phone da WHOIS (se trovato, sarà investigato dopo)
+            local domain=$(echo "$input" | grep -oP '@\K.*')
+            local ip=$(dig +short "$domain" A 2>/dev/null | head -1)
+            
+            # Agent 3: IP investigation parallela
+            if [[ -n "$ip" ]]; then
+                cni_deep_ip "$case_dir" "$ip" &
+                local pid3=$!
+            fi
+            
+            wait $pid1 2>/dev/null
+            [[ -n "${pid3:-}" ]] && wait $pid3 2>/dev/null
+            
+            # Secondo passaggio: investiga entità scoperte
+            think_phase "CNI SECONDO PASSAGGIO — Espansione rete"
+            
+            local discovered_phones=$(jq -r '.phones[]' "$case_dir/entities/entity_db.json" 2>/dev/null)
+            for phone in $discovered_phones; do
+                cni_deep_phone "$case_dir" "$phone" &
+            done
+            
+            local discovered_wallets=$(jq -r '.wallets[]' "$case_dir/entities/entity_db.json" 2>/dev/null)
+            for wallet in $discovered_wallets; do
+                cni_deep_wallet "$case_dir" "$wallet" &
+            done
+            
+            wait
+            ;;
+            
+        "phone")
+            cni_deep_phone "$case_dir" "$input" &
+            local pid1=$!
+            wait $pid1
+            
+            # Investiga email trovate
+            local discovered_emails=$(jq -r '.emails[]' "$case_dir/entities/entity_db.json" 2>/dev/null)
+            for email in $discovered_emails; do
+                cni_deep_email "$case_dir" "$email" 1 &
+            done
+            wait
+            ;;
+            
+        "ip")
+            cni_deep_ip "$case_dir" "$input" &
+            local pid1=$!
+            wait $pid1
+            
+            # Investiga domini trovati
+            local discovered_domains=$(jq -r '.domains[]' "$case_dir/entities/entity_db.json" 2>/dev/null | head -5)
+            for domain in $discovered_domains; do
+                local domain_emails=$(whois "$domain" 2>/dev/null | grep -ioP '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' | head -3)
+                for de in $domain_emails; do
+                    cni_deep_email "$case_dir" "$de" 1 &
+                done
+            done
+            wait
+            ;;
+            
+        "wallet_eth"|"wallet_btc"|"wallet_tron")
+            local chain="ethereum"
+            [[ "$input_type" == "wallet_btc" ]] && chain="bitcoin"
+            [[ "$input_type" == "wallet_tron" ]] && chain="tron"
+            
+            cni_deep_wallet "$case_dir" "$input" "$chain" &
+            local pid1=$!
+            wait $pid1
+            
+            # Investiga wallet collegati (top 5 per volume)
+            local connected=$(jq -r '.wallets[]' "$case_dir/entities/entity_db.json" 2>/dev/null | grep -v "^$input$" | head -5)
+            for cw in $connected; do
+                cni_deep_wallet "$case_dir" "$cw" "$chain" &
+            done
+            wait
+            ;;
+            
+        "domain")
+            local domain_emails=$(whois "$input" 2>/dev/null | grep -ioP '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' | head -3)
+            cni_add_entity "$case_dir" "domain" "$input" "input" "high"
+            
+            local ip=$(dig +short "$input" A 2>/dev/null | head -1)
+            [[ -n "$ip" ]] && cni_deep_ip "$case_dir" "$ip" &
+            
+            for de in $domain_emails; do
+                cni_deep_email "$case_dir" "$de" 1 &
+            done
+            wait
+            ;;
+            
+        "username")
+            cni_add_entity "$case_dir" "username" "$input" "input" "high"
+            
+            # Cerca su tutte le piattaforme
+            local platforms="facebook.com twitter.com instagram.com github.com reddit.com linkedin.com/in t.me tiktok.com medium.com keybase.io youtube.com pinterest.com"
+            for p in $platforms; do
+                local url="https://www.$p/$input"
+                [[ "$p" == "t.me" ]] && url="https://t.me/$input"
+                local code=$(curl -sL -o /dev/null -w "%{http_code}" --max-time 5 "$url" 2>/dev/null)
+                if [[ "$code" == "200" ]]; then
+                    cni_add_entity "$case_dir" "username" "$p/$input" "social_check" "medium"
+                    cni_add_connection "$case_dir" "$input" "$p/$input" "has_profile" "HTTP 200" "medium"
+                fi
+            done
+            ;;
+    esac
+    
+    # ═══════════════════════════════════════════════
+    # ANALISI FINALE
+    # ═══════════════════════════════════════════════
+    think_phase "CNI ANALISI FINALE"
+    
+    # Analizza grafo
+    local analysis_file=$(cni_analyze_graph "$case_dir")
+    
+    # Genera grafo visuale
+    cni_generate_visual_graph "$case_dir"
+    
+    # Genera report finale
+    local final_report="$case_dir/reports/CNI_REPORT_FINAL.txt"
+    
+    local node_count=$(jq '.nodes | length' "$case_dir/graph/network_graph.json" 2>/dev/null || echo 0)
+    local edge_count=$(jq '.edges | length' "$case_dir/graph/network_graph.json" 2>/dev/null || echo 0)
+    local email_count=$(jq '[.nodes[] | select(.type == "email")] | length' "$case_dir/graph/network_graph.json" 2>/dev/null || echo 0)
+    local phone_count=$(jq '[.nodes[] | select(.type == "phone")] | length' "$case_dir/graph/network_graph.json" 2>/dev/null || echo 0)
+    local ip_count=$(jq '[.nodes[] | select(.type == "ip")] | length' "$case_dir/graph/network_graph.json" 2>/dev/null || echo 0)
+    local wallet_count=$(jq '[.nodes[] | select(.type == "wallet")] | length' "$case_dir/graph/network_graph.json" 2>/dev/null || echo 0)
+    
+    cat > "$final_report" << FINALEOF
+═══════════════════════════════════════════════════════════════════════
+   KALI-AI v$VERSION — CRIMINAL NETWORK INTELLIGENCE REPORT
+              Rapporto Investigativo Automatizzato
+═══════════════════════════════════════════════════════════════════════
+
+INFORMAZIONI CASO
+  Case ID:           $case_id
+  Input iniziale:    $input ($input_type)
+  Descrizione:       $description
+  Data indagine:     $(date)
+  Investigatore:     Kali-AI v$VERSION — CNI Engine
+  Operatore:         $AUTHOR
+
+═══════════════════════════════════════════════════════════════════════
+SOMMARIO ESECUTIVO
+═══════════════════════════════════════════════════════════════════════
+  Entità totali scoperte:    $node_count
+  Connessioni mappate:       $edge_count
+  Email identificate:        $email_count
+  Numeri telefono:           $phone_count
+  Indirizzi IP:              $ip_count
+  Wallet crypto:             $wallet_count
+
+═══════════════════════════════════════════════════════════════════════
+ANALISI DETTAGLIATA DELLA RETE
+═══════════════════════════════════════════════════════════════════════
+$(cat "$analysis_file" 2>/dev/null)
+
+═══════════════════════════════════════════════════════════════════════
+EVIDENZE GEOLOCALIZZAZIONE
+═══════════════════════════════════════════════════════════════════════
+$(for f in "$case_dir"/evidence/geoip_*.json; do
+    [[ ! -f "$f" ]] && continue
+    local eip=$(basename "$f" | grep -oP '\d+\.\d+\.\d+\.\d+')
+    echo "IP: $eip"
+    jq -r '"  Paese: \(.country // "N/A")\n  Città: \(.city // "N/A")\n  ISP: \(.isp // "N/A")\n  Org: \(.org // "N/A")\n  AS: \(.as // "N/A")\n  Proxy: \(.proxy // "N/A")\n  Hosting: \(.hosting // "N/A")"' "$f" 2>/dev/null
+    echo ""
+done)
+
+═══════════════════════════════════════════════════════════════════════
+ANALISI VPN/PROXY
+═══════════════════════════════════════════════════════════════════════
+$(for f in "$case_dir"/evidence/vpn_analysis_*.txt; do
+    [[ ! -f "$f" ]] && continue
+    cat "$f"
+    echo ""
+done)
+
+═══════════════════════════════════════════════════════════════════════
+ANALISI CRYPTO (se applicabile)
+═══════════════════════════════════════════════════════════════════════
+$(jq -r '.[] | select(.type == "crypto_analysis") | .description' "$case_dir/timeline/events.json" 2>/dev/null)
+
+═══════════════════════════════════════════════════════════════════════
+TIMELINE EVENTI
+═══════════════════════════════════════════════════════════════════════
+$(jq -r '.[] | "[\(.timestamp)] \(.type): \(.description)"' "$case_dir/timeline/events.json" 2>/dev/null)
+
+═══════════════════════════════════════════════════════════════════════
+TUTTE LE ENTITÀ SCOPERTE
+═══════════════════════════════════════════════════════════════════════
+EMAIL:
+$(jq -r '.emails[]' "$case_dir/entities/entity_db.json" 2>/dev/null | sed 's/^/  /')
+
+TELEFONI:
+$(jq -r '.phones[]' "$case_dir/entities/entity_db.json" 2>/dev/null | sed 's/^/  /')
+
+IP:
+$(jq -r '.ips[]' "$case_dir/entities/entity_db.json" 2>/dev/null | sed 's/^/  /')
+
+DOMINI:
+$(jq -r '.domains[]' "$case_dir/entities/entity_db.json" 2>/dev/null | sed 's/^/  /')
+
+WALLET CRYPTO:
+$(jq -r '.wallets[]' "$case_dir/entities/entity_db.json" 2>/dev/null | sed 's/^/  /')
+
+USERNAME/SOCIAL:
+$(jq -r '.usernames[]' "$case_dir/entities/entity_db.json" 2>/dev/null | sed 's/^/  /')
+
+NOMI:
+$(jq -r '.names[]' "$case_dir/entities/entity_db.json" 2>/dev/null | sed 's/^/  /')
+
+═══════════════════════════════════════════════════════════════════════
+TUTTE LE CONNESSIONI
+═══════════════════════════════════════════════════════════════════════
+$(jq -r '.edges[] | "  \(.from_value) --[\(.relation)]--> \(.to_value) [\(.strength)] (\(.evidence))"' "$case_dir/graph/network_graph.json" 2>/dev/null)
+
+═══════════════════════════════════════════════════════════════════════
+FILE E RISORSE
+═══════════════════════════════════════════════════════════════════════
+  Report:     $final_report
+  Grafo JSON: $case_dir/graph/network_graph.json
+  Grafo PNG:  $case_dir/graph/criminal_network.png
+  Grafo SVG:  $case_dir/graph/criminal_network.svg
+  Entità DB:  $case_dir/entities/entity_db.json
+  Timeline:   $case_dir/timeline/events.json
+  Evidenze:   $case_dir/evidence/
+  Analisi:    $analysis_file
+
+═══════════════════════════════════════════════════════════════════════
+RACCOMANDAZIONI INVESTIGATIVE
+═══════════════════════════════════════════════════════════════════════
+  1. Verificare gli hub principali della rete (nodi con più connessioni)
+  2. Approfondire le entità ponte che collegano cluster diversi
+  3. Se VPN rilevata: richiedere log tramite ordine giudiziario
+  4. Cross-referenziare wallet crypto con exchange per KYC
+  5. Verificare i profili social per conferma identità
+  6. Preservare tutte le evidenze per catena di custodia
+  7. Presentare il report con il grafo visuale alle autorità
+
+═══════════════════════════════════════════════════════════════════════
+Fine Report — $(date)
+Generato da Kali-AI v$VERSION — Criminal Network Intelligence Engine
+Classificazione: RISERVATO — Solo per uso investigativo autorizzato
+═══════════════════════════════════════════════════════════════════════
+FINALEOF
+
+    think_result "CNI INVESTIGAZIONE COMPLETATA"
+    
+    echo -e "${RED}╔═══════════════════════════════════════════════════════════════╗${RESET}"
+    echo -e "${RED}║  🔎 CNI INVESTIGATION COMPLETE                               ║${RESET}"
+    echo -e "${RED}║  Case: $case_id${RESET}"
+    echo -e "${RED}║  Entità: $node_count | Connessioni: $edge_count${RESET}"
+    echo -e "${RED}║  Email: $email_count | Phone: $phone_count | IP: $ip_count${RESET}"
+    echo -e "${RED}║  Wallet: $wallet_count${RESET}"
+    echo -e "${RED}║  📄 Report: $final_report${RESET}"
+    echo -e "${RED}║  🗺️ Grafo: $case_dir/graph/criminal_network.png${RESET}"
+    echo -e "${RED}╚═══════════════════════════════════════════════════════════════╝${RESET}"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# FASE 29: ADVANCED CRYPTO FORENSICS ENGINE
+# ═══════════════════════════════════════════════════════════════
+# Traccia flussi crypto, identifica exchange, rileva conversioni
+# fiat, mappa la rete di wallet, scoring rischio riciclaggio
+# ═══════════════════════════════════════════════════════════════
+
+KNOWN_EXCHANGES="$BASE_DIR/known_exchanges.json"
+
+init_exchange_db() {
+    if [[ ! -f "$KNOWN_EXCHANGES" ]]; then
+        cat > "$KNOWN_EXCHANGES" << 'EXCHEOF'
+{
+  "ethereum": {
+    "0xdfd5293d8e347dfe59e90efd55b2956a1343963d": {"name":"Binance","type":"CEX","kyc":"mandatory","jurisdiction":"Global"},
+    "0x28c6c06298d514db089934071355e5743bf21d60": {"name":"Binance Hot Wallet 2","type":"CEX","kyc":"mandatory","jurisdiction":"Global"},
+    "0x21a31ee1afc51d94c2efccaa2092ad1028285549": {"name":"Binance","type":"CEX","kyc":"mandatory","jurisdiction":"Global"},
+    "0x56eddb7aa87536c09ccc2793473599fd21a8b17f": {"name":"Binance","type":"CEX","kyc":"mandatory","jurisdiction":"Global"},
+    "0x3f5ce5fbfe3e9af3971dd833d26ba9b5c936f0be": {"name":"Binance Old","type":"CEX","kyc":"mandatory","jurisdiction":"Global"},
+    "0x71660c4005ba85c37ccec55d0c4493e66fe775d3": {"name":"Coinbase","type":"CEX","kyc":"mandatory","jurisdiction":"USA"},
+    "0x503828976d22510aad0201ac7ec88293211d23da": {"name":"Coinbase","type":"CEX","kyc":"mandatory","jurisdiction":"USA"},
+    "0xddfabcdc4d8ffc6d5beaf154f18b778f892a0740": {"name":"Coinbase","type":"CEX","kyc":"mandatory","jurisdiction":"USA"},
+    "0x267be1c1d684f78cb4f6a176c4911b741e4ffdc0": {"name":"Kraken","type":"CEX","kyc":"mandatory","jurisdiction":"USA"},
+    "0x2910543af39aba0cd09dbb2d50200b3e800a63d2": {"name":"Kraken","type":"CEX","kyc":"mandatory","jurisdiction":"USA"},
+    "0x53d284357ec70ce289d6d64134dfac8e511c8a3d": {"name":"Kraken Cold","type":"CEX","kyc":"mandatory","jurisdiction":"USA"},
+    "0x1151314c646ce4e0efd76d1af4760ae66a9fe30f": {"name":"Bitfinex","type":"CEX","kyc":"mandatory","jurisdiction":"BVI"},
+    "0x742d35cc6634c0532925a3b844bc9e7595f2bd1e": {"name":"Bitfinex","type":"CEX","kyc":"mandatory","jurisdiction":"BVI"},
+    "0xfbb1b73c4f0bda4f67dca266ce6ef42f520fbb98": {"name":"Bittrex","type":"CEX","kyc":"mandatory","jurisdiction":"USA"},
+    "0x2b5634c42055806a59e9107ed44d43c426e58258": {"name":"KuCoin","type":"CEX","kyc":"partial","jurisdiction":"Seychelles"},
+    "0xd6216fc19db775df9774a6e33526131da7d19a2c": {"name":"KuCoin","type":"CEX","kyc":"partial","jurisdiction":"Seychelles"},
+    "0x6cc5f688a315f3dc28a7781717a9a798a59fda7b": {"name":"OKX","type":"CEX","kyc":"mandatory","jurisdiction":"Seychelles"},
+    "0x236f9f97e0e62388479bf9e5ba4889e46b0273c3": {"name":"OKX","type":"CEX","kyc":"mandatory","jurisdiction":"Seychelles"},
+    "0xab5c66752a9e8167967685f1450532fb96d5d24f": {"name":"Huobi","type":"CEX","kyc":"mandatory","jurisdiction":"Seychelles"},
+    "0x46340b20830761efd32832a74d7169b29feb9758": {"name":"Crypto.com","type":"CEX","kyc":"mandatory","jurisdiction":"Singapore"},
+    "0xd47140f6ab73f6d6b6675fb1610bb5e9b5d96fe5": {"name":"MEXC","type":"CEX","kyc":"partial","jurisdiction":"Singapore"},
+    "0x0d0707963952f2fba59dd06f2b425ace40b492fe": {"name":"Gate.io","type":"CEX","kyc":"partial","jurisdiction":"Cayman"},
+    "0x1111111254eeb25477b68fb85ed929f73a960582": {"name":"1inch Router","type":"DEX_Aggregator","kyc":"none","jurisdiction":"Decentralized"},
+    "0x7a250d5630b4cf539739df2c5dacb4c659f2488d": {"name":"Uniswap V2 Router","type":"DEX","kyc":"none","jurisdiction":"Decentralized"},
+    "0xe592427a0aece92de3edee1f18e0157c05861564": {"name":"Uniswap V3 Router","type":"DEX","kyc":"none","jurisdiction":"Decentralized"},
+    "0xd9e1ce17f2641f24ae83637ab66a2cca9c378b9f": {"name":"SushiSwap Router","type":"DEX","kyc":"none","jurisdiction":"Decentralized"},
+    "0xdef1c0ded9bec7f1a1670819833240f027b25eff": {"name":"0x Exchange Proxy","type":"DEX","kyc":"none","jurisdiction":"Decentralized"},
+    "0x00000000006c3852cbef3e08e8df289169ede581": {"name":"OpenSea Seaport","type":"NFT_Market","kyc":"none","jurisdiction":"Decentralized"},
+    "0xd90e2f925da726b50c4ed8d0fb90ad053324f31b": {"name":"Tornado Cash Router","type":"MIXER","kyc":"none","jurisdiction":"SANCTIONED"},
+    "0x722122df12d4e14e13ac3b6895a86e84145b6967": {"name":"Tornado Cash","type":"MIXER","kyc":"none","jurisdiction":"SANCTIONED"},
+    "0xba214c1c1928a32bffe790263e38b4af9bfcd659": {"name":"Tornado Cash 1","type":"MIXER","kyc":"none","jurisdiction":"SANCTIONED"},
+    "0x47ce0c6ed5b0ce3d3a51fdb1c52dc66a7c3c2936": {"name":"Tornado Cash 10","type":"MIXER","kyc":"none","jurisdiction":"SANCTIONED"},
+    "0x910cbd523d972eb0a6f4cae4618ad62622b39dbf": {"name":"Tornado Cash 100","type":"MIXER","kyc":"none","jurisdiction":"SANCTIONED"},
+    "0xa160cdab225685da1d56aa342ad8841c3b53f291": {"name":"Tornado Cash 0.1","type":"MIXER","kyc":"none","jurisdiction":"SANCTIONED"}
+  },
+  "bitcoin": {
+    "34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo": {"name":"Binance","type":"CEX","kyc":"mandatory","jurisdiction":"Global"},
+    "3M219KR5vEneNb47ewrPfWyb5jQ2DjxRP6": {"name":"Binance Cold","type":"CEX","kyc":"mandatory","jurisdiction":"Global"},
+    "bc1qm34lsc65zpw79lxes69zkqmk6ee3ewf0j77s3h": {"name":"Binance","type":"CEX","kyc":"mandatory","jurisdiction":"Global"},
+    "3Kzh9qAqVWQhEsfQz7zEQL1EuSx5tyNLNS": {"name":"Coinbase","type":"CEX","kyc":"mandatory","jurisdiction":"USA"},
+    "3FHNBLobJnbCTFTVakh5TXmEneyf5PT61B": {"name":"Coinbase","type":"CEX","kyc":"mandatory","jurisdiction":"USA"},
+    "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh": {"name":"Binance","type":"CEX","kyc":"mandatory","jurisdiction":"Global"},
+    "3Cbq7aT1tY8kMxWLbitaG7yT6bPbKChq64": {"name":"Bitfinex","type":"CEX","kyc":"mandatory","jurisdiction":"BVI"},
+    "3JZq4atUahhuA9rLhXLMhhTo133J9rF97j": {"name":"Bittrex","type":"CEX","kyc":"mandatory","jurisdiction":"USA"},
+    "3KF9nXowQ4asSGxRRzeiTpDjMuwM2nFjkR": {"name":"Kraken","type":"CEX","kyc":"mandatory","jurisdiction":"USA"}
+  }
+}
+EXCHEOF
+    fi
+}
+
+crypto_trace_flow() {
+    local wallet="$1"
+    local chain="${2:-auto}"
+    local depth="${3:-3}"
+    local case_dir="$REPORTS_DIR/crypto_forensics_$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$case_dir"/{transactions,wallets,exchange_hits,flow_map,evidence,fiat_exits}
+    
+    init_exchange_db
+    
+    think_phase "═══ CRYPTO FORENSICS ENGINE ═══"
+    think_strategy "Tracciamento completo flussi crypto: $wallet (depth: $depth)"
+    
+    # Auto-detect chain
+    if [[ "$chain" == "auto" ]]; then
+        if [[ "$wallet" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
+            chain="ethereum"
+        elif [[ "$wallet" =~ ^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$ ]] || [[ "$wallet" =~ ^bc1 ]]; then
+            chain="bitcoin"
+        fi
+    fi
+    
+    think_observe "Chain: $chain | Wallet: $wallet | Profondità: $depth livelli"
+    
+    local report_file="$case_dir/CRYPTO_FORENSICS_REPORT.txt"
+    local exchange_hits_file="$case_dir/exchange_hits/matches.txt"
+    local fiat_exits_file="$case_dir/fiat_exits/fiat_conversion_points.txt"
+    local flow_json="$case_dir/flow_map/money_flow.json"
+    
+    echo '{"nodes":[],"flows":[],"exchange_hits":[],"mixer_hits":[],"risk_indicators":[]}' > "$flow_json"
+    echo "" > "$exchange_hits_file"
+    echo "" > "$fiat_exits_file"
+    
+    # Variabili globali per tracking
+    local total_exchange_hits=0
+    local total_mixer_hits=0
+    local total_wallets_traced=0
+    local total_transactions=0
+    local total_value_moved="0"
+    local risk_score=0
+    local traced_wallets=""
+    
+    cat > "$report_file" << CRYPTOHEAD
+═══════════════════════════════════════════════════════════════════════
+     KALI-AI v$VERSION — CRYPTO FORENSICS REPORT
+          Tracciamento Flussi & Analisi Riciclaggio
+═══════════════════════════════════════════════════════════════════════
+
+DATI CASO
+  Wallet target:     $wallet
+  Blockchain:        $chain
+  Profondità trace:  $depth livelli
+  Data analisi:      $(date)
+  Engine:            Kali-AI Crypto Forensics v$VERSION
+  Operatore:         $AUTHOR
+
+═══════════════════════════════════════════════════════════════════════
+CRYPTOHEAD
+
+    # ═══════════════════════════════════════════════
+    # FUNZIONE: Traccia un singolo wallet
+    # ═══════════════════════════════════════════════
+    trace_single_wallet() {
+        local w="$1"
+        local current_depth="$2"
+        local direction="$3"
+        
+        # Evita loop
+        echo "$traced_wallets" | grep -q "$w" && return
+        traced_wallets="$traced_wallets $w"
+        total_wallets_traced=$((total_wallets_traced + 1))
+        
+        think_agent "Trace depth $current_depth: $w ($direction)"
+        
+        # Check se è un exchange noto
+        local exchange_match=""
+        local w_lower=$(echo "$w" | tr '[:upper:]' '[:lower:]')
+        
+        if [[ "$chain" == "ethereum" ]]; then
+            exchange_match=$(jq -r --arg addr "$w_lower" '.ethereum[$addr] // empty' "$KNOWN_EXCHANGES" 2>/dev/null)
+        elif [[ "$chain" == "bitcoin" ]]; then
+            exchange_match=$(jq -r --arg addr "$w" '.bitcoin[$addr] // empty' "$KNOWN_EXCHANGES" 2>/dev/null)
+        fi
+        
+        if [[ -n "$exchange_match" ]]; then
+            local ex_name=$(echo "$exchange_match" | jq -r '.name')
+            local ex_type=$(echo "$exchange_match" | jq -r '.type')
+            local ex_kyc=$(echo "$exchange_match" | jq -r '.kyc')
+            local ex_jurisdiction=$(echo "$exchange_match" | jq -r '.jurisdiction')
+            
+            echo "EXCHANGE HIT: $w → $ex_name ($ex_type) | KYC: $ex_kyc | Giurisdizione: $ex_jurisdiction" >> "$exchange_hits_file"
+            
+            if [[ "$ex_type" == "CEX" ]]; then
+                total_exchange_hits=$((total_exchange_hits + 1))
+                echo "FIAT EXIT POINT: $ex_name — KYC $ex_kyc — Giurisdizione: $ex_jurisdiction" >> "$fiat_exits_file"
+                echo "  → Richiedere dati KYC a $ex_name tramite autorità giudiziaria ($ex_jurisdiction)" >> "$fiat_exits_file"
+                echo "  → Wallet associato: $w" >> "$fiat_exits_file"
+                echo "" >> "$fiat_exits_file"
+                think_observe "🎯 EXCHANGE CEX TROVATO: $ex_name — PUNTO DI CONVERSIONE FIAT — KYC: $ex_kyc"
+                risk_score=$((risk_score + 5))
+            elif [[ "$ex_type" == "MIXER" ]]; then
+                total_mixer_hits=$((total_mixer_hits + 1))
+                think_observe "⚠️ MIXER/TUMBLER: $ex_name — TENTATIVO DI OSCURAMENTO"
+                risk_score=$((risk_score + 30))
+                
+                local flow_updated=$(jq --arg w "$w" --arg name "$ex_name" \
+                    '.mixer_hits += [{wallet:$w, mixer:$name, severity:"CRITICAL"}]' "$flow_json")
+                echo "$flow_updated" > "$flow_json"
+            elif [[ "$ex_type" == "DEX" || "$ex_type" == "DEX_Aggregator" ]]; then
+                think_observe "🔄 DEX: $ex_name — Swap decentralizzato (no KYC)"
+                risk_score=$((risk_score + 10))
+            fi
+            
+            local flow_updated=$(jq --arg w "$w" --arg name "$ex_name" --arg type "$ex_type" --arg kyc "$ex_kyc" --arg jur "$ex_jurisdiction" \
+                '.exchange_hits += [{wallet:$w, exchange:$name, type:$type, kyc:$kyc, jurisdiction:$jur}]' "$flow_json")
+            echo "$flow_updated" > "$flow_json"
+        fi
+        
+        # Se raggiunti la profondità massima, stop
+        [[ $current_depth -ge $depth ]] && return
+        
+        # Recupera transazioni
+        local txs=""
+        if [[ "$chain" == "ethereum" ]]; then
+            txs=$(curl -s "https://api.etherscan.io/api?module=account&action=txlist&address=$w&startblock=0&endblock=99999999&page=1&offset=30&sort=desc" 2>/dev/null)
+            echo "$txs" > "$case_dir/transactions/tx_${w:0:16}_depth${current_depth}.json"
+            
+            local tx_count=$(echo "$txs" | jq '.result | length' 2>/dev/null || echo 0)
+            total_transactions=$((total_transactions + tx_count))
+            
+            # Estrai wallet collegati con valori
+            local connected=$(echo "$txs" | jq -r '.result[]? | 
+                select(.value != "0") |
+                "\(.from)|\(.to)|\(.value)|\(.hash)|\(.timeStamp)"' 2>/dev/null | head -20)
+            
+            while IFS='|' read -r tx_from tx_to tx_value tx_hash tx_time; do
+                [[ -z "$tx_from" ]] && continue
+                
+                local value_eth=$(echo "scale=4; $tx_value / 1000000000000000000" | bc 2>/dev/null || echo "0")
+                local tx_date=$(date -d "@$tx_time" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "$tx_time")
+                
+                # Registra nel flow
+                local flow_entry=$(jq -cn \
+                    --arg from "$tx_from" \
+                    --arg to "$tx_to" \
+                    --arg value "$value_eth" \
+                    --arg hash "$tx_hash" \
+                    --arg date "$tx_date" \
+                    --arg depth "$current_depth" \
+                    '{from:$from, to:$to, value_eth:$value, tx_hash:$hash, date:$date, trace_depth:($depth|tonumber)}')
+                
+                local flow_updated=$(jq --argjson f "$flow_entry" '.flows += [$f]' "$flow_json")
+                echo "$flow_updated" > "$flow_json"
+                
+                # Segui il flusso
+                if [[ "$tx_from" == "$w_lower" || "$tx_from" == "$w" ]]; then
+                    # Fondi IN USCITA — segui dove vanno
+                    trace_single_wallet "$tx_to" $((current_depth + 1)) "outgoing_from_$w"
+                elif [[ "$tx_to" == "$w_lower" || "$tx_to" == "$w" ]]; then
+                    # Fondi IN ENTRATA — segui da dove vengono
+                    trace_single_wallet "$tx_from" $((current_depth + 1)) "incoming_to_$w"
+                fi
+            done <<< "$connected"
+            
+            # Check anche token transfers (ERC-20)
+            local token_txs=$(curl -s "https://api.etherscan.io/api?module=account&action=tokentx&address=$w&page=1&offset=15&sort=desc" 2>/dev/null)
+            echo "$token_txs" > "$case_dir/transactions/tokens_${w:0:16}.json"
+            
+            local token_connected=$(echo "$token_txs" | jq -r '.result[]? | "\(.from)|\(.to)|\(.tokenName)|\(.value)|\(.tokenDecimal)"' 2>/dev/null | head -10)
+            while IFS='|' read -r tf tt tn tv td; do
+                [[ -z "$tf" ]] && continue
+                local token_value=$(echo "scale=2; $tv / (10 ^ ${td:-18})" | bc 2>/dev/null || echo "0")
+                
+                if [[ "$tf" != "$w_lower" && "$tf" != "$w" ]]; then
+                    echo "$tf" | grep -q "^0x" && trace_single_wallet "$tf" $((current_depth + 1)) "token_${tn}_from"
+                fi
+                if [[ "$tt" != "$w_lower" && "$tt" != "$w" ]]; then
+                    echo "$tt" | grep -q "^0x" && trace_single_wallet "$tt" $((current_depth + 1)) "token_${tn}_to"
+                fi
+            done <<< "$token_connected"
+            
+        elif [[ "$chain" == "bitcoin" ]]; then
+            txs=$(curl -s "https://blockchain.info/rawaddr/$w?limit=30" 2>/dev/null)
+            echo "$txs" > "$case_dir/transactions/tx_${w:0:16}_depth${current_depth}.json"
+            
+            local tx_count=$(echo "$txs" | jq '.n_tx // 0' 2>/dev/null || echo 0)
+            total_transactions=$((total_transactions + tx_count))
+            
+            local btc_balance=$(echo "$txs" | jq '.final_balance // 0' 2>/dev/null)
+            local btc_total_received=$(echo "$txs" | jq '.total_received // 0' 2>/dev/null)
+            local btc_total_sent=$(echo "$txs" | jq '.total_sent // 0' 2>/dev/null)
+            
+            # Estrai wallet collegati
+            local btc_connected=$(echo "$txs" | jq -r '
+                .txs[]? | 
+                (.inputs[]?.prev_out?.addr // empty) + "|" + 
+                (.out[]?.addr // empty) + "|" +
+                ((.out[]?.value // 0) | tostring)
+            ' 2>/dev/null | sort -u | head -20)
+            
+            while IFS='|' read -r btc_from btc_to btc_val; do
+                [[ -z "$btc_from" && -z "$btc_to" ]] && continue
+                local btc_value=$(echo "scale=8; ${btc_val:-0} / 100000000" | bc 2>/dev/null || echo "0")
+                
+                [[ -n "$btc_from" && "$btc_from" != "$w" ]] && trace_single_wallet "$btc_from" $((current_depth + 1)) "btc_input"
+                [[ -n "$btc_to" && "$btc_to" != "$w" ]] && trace_single_wallet "$btc_to" $((current_depth + 1)) "btc_output"
+            done <<< "$btc_connected"
+        fi
+        
+        sleep 0.3  # Rate limiting
+    }
+    
+    # ═══════════════════════════════════════════════
+    # AVVIO TRACCIAMENTO
+    # ═══════════════════════════════════════════════
+    think_phase "AVVIO TRACCIAMENTO MULTI-LIVELLO"
+    
+    # Wallet iniziale info
+    local initial_balance=""
+    if [[ "$chain" == "ethereum" ]]; then
+        local bal=$(curl -s "https://api.etherscan.io/api?module=account&action=balance&address=$wallet&tag=latest" 2>/dev/null | jq -r '.result // "0"')
+        initial_balance=$(echo "scale=6; $bal / 1000000000000000000" | bc 2>/dev/null || echo "0")
+        think_observe "Balance iniziale: $initial_balance ETH"
+    elif [[ "$chain" == "bitcoin" ]]; then
+        local bal=$(curl -s "https://blockchain.info/q/addressbalance/$wallet" 2>/dev/null)
+        initial_balance=$(echo "scale=8; ${bal:-0} / 100000000" | bc 2>/dev/null || echo "0")
+        think_observe "Balance iniziale: $initial_balance BTC"
+    fi
+    
+    # Lancia tracciamento ricorsivo
+    trace_single_wallet "$wallet" 0 "origin"
+    
+    # ═══════════════════════════════════════════════
+    # RISK SCORING RICICLAGGIO
+    # ═══════════════════════════════════════════════
+    think_phase "ANALISI RISCHIO RICICLAGGIO"
+    
+    local laundering_indicators=""
+    
+    # Indicatore 1: uso di mixer
+    [[ $total_mixer_hits -gt 0 ]] && {
+        risk_score=$((risk_score + 40))
+        laundering_indicators="$laundering_indicators\n  ⚠️ CRITICO: Uso di mixer/tumbler rilevato ($total_mixer_hits hit)"
+    }
+    
+    # Indicatore 2: chain-hopping (molti DEX)
+    local dex_count=$(jq '[.exchange_hits[] | select(.type == "DEX" or .type == "DEX_Aggregator")] | length' "$flow_json" 2>/dev/null || echo 0)
+    [[ $dex_count -gt 2 ]] && {
+        risk_score=$((risk_score + 15))
+        laundering_indicators="$laundering_indicators\n  ⚠️ ALTO: Chain-hopping tramite $dex_count DEX"
+    }
+    
+    # Indicatore 3: rapide conversioni fiat
+    [[ $total_exchange_hits -gt 2 ]] && {
+        risk_score=$((risk_score + 10))
+        laundering_indicators="$laundering_indicators\n  ⚠️ MEDIO: Fondi passano per $total_exchange_hits exchange CEX (possibile cash-out)"
+    }
+    
+    # Indicatore 4: splitting (molti wallet intermedi)
+    [[ $total_wallets_traced -gt 15 ]] && {
+        risk_score=$((risk_score + 10))
+        laundering_indicators="$laundering_indicators\n  ⚠️ MEDIO: $total_wallets_traced wallet nella catena — possibile splitting"
+    }
+    
+    # Cap a 100
+    [[ $risk_score -gt 100 ]] && risk_score=100
+    
+    local risk_level="BASSO"
+    [[ $risk_score -ge 25 ]] && risk_level="MEDIO"
+    [[ $risk_score -ge 50 ]] && risk_level="ALTO"
+    [[ $risk_score -ge 75 ]] && risk_level="CRITICO"
+    
+    # ═══════════════════════════════════════════════
+    # GENERA REPORT FINALE
+    # ═══════════════════════════════════════════════
+    
+    cat >> "$report_file" << CRYPTOBODY
+
+═══════════════════════════════════════════════════════════════════════
+1. PANORAMICA WALLET TARGET
+═══════════════════════════════════════════════════════════════════════
+  Indirizzo:         $wallet
+  Blockchain:        $chain
+  Balance attuale:   $initial_balance $(echo "$chain" | tr '[:lower:]' '[:upper:]' | sed 's/ETHEREUM/ETH/' | sed 's/BITCOIN/BTC/')
+  Transazioni:       $total_transactions
+
+═══════════════════════════════════════════════════════════════════════
+2. RISULTATI TRACCIAMENTO ($depth livelli di profondità)
+═══════════════════════════════════════════════════════════════════════
+  Wallet tracciati:         $total_wallets_traced
+  Exchange CEX identificati: $total_exchange_hits
+  Mixer/Tumbler rilevati:   $total_mixer_hits
+  DEX utilizzati:           $dex_count
+  Transazioni analizzate:   $total_transactions
+
+═══════════════════════════════════════════════════════════════════════
+3. PUNTI DI CONVERSIONE FIAT (EXCHANGE CON KYC)
+═══════════════════════════════════════════════════════════════════════
+$(cat "$fiat_exits_file" 2>/dev/null)
+$(if [[ $total_exchange_hits -eq 0 ]]; then echo "  Nessun exchange CEX identificato nella catena — il soggetto potrebbe usare P2P o OTC"; fi)
+
+═══════════════════════════════════════════════════════════════════════
+4. EXCHANGE E SERVIZI IDENTIFICATI
+═══════════════════════════════════════════════════════════════════════
+$(cat "$exchange_hits_file" 2>/dev/null)
+
+═══════════════════════════════════════════════════════════════════════
+5. RISK SCORING RICICLAGGIO
+═══════════════════════════════════════════════════════════════════════
+  
+  RISK SCORE: $risk_score / 100 — $risk_level
+  
+  [$(printf '█%.0s' $(seq 1 $((risk_score / 2))))$(printf '░%.0s' $(seq 1 $(( (100 - risk_score) / 2))))]
+   0        25        50        75       100
+   BASSO    MEDIO     ALTO      CRITICO
+
+INDICATORI DI RICICLAGGIO:
+$(echo -e "$laundering_indicators")
+
+═══════════════════════════════════════════════════════════════════════
+6. FLUSSO FONDI (TOP TRANSAZIONI)
+═══════════════════════════════════════════════════════════════════════
+$(jq -r '.flows[:30][] | "  \(.date) | \(.from[:16])... → \(.to[:16])... | \(.value_eth) ETH | Depth:\(.trace_depth)"' "$flow_json" 2>/dev/null)
+
+═══════════════════════════════════════════════════════════════════════
+7. AZIONI INVESTIGATIVE RACCOMANDATE
+═══════════════════════════════════════════════════════════════════════
+$(if [[ $total_exchange_hits -gt 0 ]]; then
+echo "  PRIORITÀ ALTA — RICHIESTE KYC:"
+jq -r '.exchange_hits[] | select(.type == "CEX") | "  → Richiedere dati KYC a \(.exchange) (\(.jurisdiction))\n    Wallet: \(.wallet)\n    Procedura: ordine giudiziario / MLAT se estero\n"' "$flow_json" 2>/dev/null
+fi)
+$(if [[ $total_mixer_hits -gt 0 ]]; then
+echo "  ⚠️ ATTENZIONE — MIXER RILEVATI:"
+echo "  I fondi sono passati attraverso servizi di mixing."
+echo "  Questo rende il tracciamento diretto più difficile."
+echo "  Raccomandazione: analisi statistica dei flussi in/out del mixer"
+echo "  per tentare correlazione temporale e di importo."
+fi)
+  
+  AZIONI GENERALI:
+  1. Congelare i wallet sugli exchange identificati (richiesta alle autorità)
+  2. Richiedere log completi delle transazioni agli exchange CEX
+  3. Verificare dati KYC per identificazione soggetti
+  4. Cross-referenziare con database OSINT per collegare identità
+  5. Se fondi su DEX: monitorare per future conversioni su CEX
+  6. Preservare tutte le evidenze blockchain (immutabili per natura)
+  7. Preparare documentazione per rogatoria internazionale se necessario
+
+═══════════════════════════════════════════════════════════════════════
+8. FILE E RISORSE
+═══════════════════════════════════════════════════════════════════════
+  Report:           $report_file
+  Flow Map JSON:    $flow_json
+  Exchange Hits:    $exchange_hits_file
+  Fiat Exit Points: $fiat_exits_file
+  Transazioni raw:  $case_dir/transactions/
+  Evidenze:         $case_dir/evidence/
+
+═══════════════════════════════════════════════════════════════════════
+Fine analisi: $(date)
+Kali-AI v$VERSION — Crypto Forensics Engine
+Classificazione: RISERVATO — Solo per uso investigativo autorizzato
+═══════════════════════════════════════════════════════════════════════
+CRYPTOBODY
+
+    think_result "CRYPTO FORENSICS COMPLETATO — Risk: $risk_score/100 ($risk_level)"
+    
+    echo -e "${RED}╔═══════════════════════════════════════════════════════════════╗${RESET}"
+    echo -e "${RED}║  💰 CRYPTO FORENSICS COMPLETE                                ║${RESET}"
+    echo -e "${RED}║  Wallet: ${wallet:0:20}...${RESET}"
+    echo -e "${RED}║  Chain: $chain | Balance: $initial_balance${RESET}"
+    echo -e "${RED}║  Wallets tracciati: $total_wallets_traced${RESET}"
+    echo -e "${RED}║  Exchange CEX: $total_exchange_hits | Mixer: $total_mixer_hits${RESET}"
+    echo -e "${RED}║  Risk Score: $risk_score/100 — $risk_level${RESET}"
+    echo -e "${RED}║  📄 Report: $report_file${RESET}"
+    echo -e "${RED}╚═══════════════════════════════════════════════════════════════╝${RESET}"
+}
