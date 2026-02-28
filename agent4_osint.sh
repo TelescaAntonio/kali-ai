@@ -89,7 +89,7 @@ fi
 # Cerca anche per email
 orcid_email=$(curl -s --max-time 10 "https://pub.orcid.org/v3.0/search/?q=email:$suspect_email" -H "Accept: application/json" 2>/dev/null)
 orcid_email_count=$(echo "$orcid_email" | jq -r '."num-found" // 0' 2>/dev/null)
-if [ "$orcid_email_count" -gt 0 ]; then
+orcid_email_count=${orcid_email_count:-0}; orcid_email_count=$(echo "$orcid_email_count" | tr -d "\n "); orcid_email_count=${orcid_email_count:-0}; orcid_email_count=$(echo "$orcid_email_count" | tr -d "\n "); if [ "$orcid_email_count" -gt 0 ]; then
     orcid_id=$(echo "$orcid_email" | jq -r '.result[0]."orcid-identifier".path // empty' 2>/dev/null)
     echo "VERIFICATO: https://orcid.org/$orcid_id (ORCID — match diretto email)" >> "$case_dir/social_links/found.txt"
 fi
@@ -105,7 +105,7 @@ fi
 # ── 4. Google Scholar ──
 scholar_page=$(curl -sL --max-time 10 -A "Mozilla/5.0" "https://scholar.google.com/scholar?q=author:\"${first_name}+${last_name}\"" 2>/dev/null)
 scholar_count=$(echo "$scholar_page" | grep -c "gs_r gs_or gs_scl" 2>/dev/null || echo 0)
-scholar_count=${scholar_count:-0}; if [ "$scholar_count" -gt 0 ]; then
+scholar_count=$(echo "${scholar_count:-0}" | tr -d "\n "); if [ "$scholar_count" -gt 0 ]; then
     echo "TROVATO: Google Scholar — $scholar_count risultati per ${first_name} ${last_name}" >> "$case_dir/social_links/found.txt"
 fi
 

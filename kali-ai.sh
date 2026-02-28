@@ -370,7 +370,7 @@ setup_sudo_nopass() {
 
 get_system_snapshot() {
     local s=""
-    s+="OS: $(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d'"' -f2)\n"
+    s+="OS: $(sed -n 's/^PRETTY_NAME=//p' /etc/os-release 2>/dev/null | tr -d '\"')\n"
     s+="Kernel: $(uname -r) | User: $(whoami) | PWD: $(pwd)\n"
     s+="RAM: $(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}') | CPU: $(cat /proc/loadavg 2>/dev/null | awk '{print $1,$2,$3}')\n"
     s+="Disco: $(df -h / 2>/dev/null | awk 'NR==2{print $3"/"$2" ("$5")"}')\n"
@@ -1588,7 +1588,7 @@ main() {
     sleep 1
     
     think_phase "KALI-AI v14.0 INIZIALIZZATO"
-    think_thought "Sistema operativo: $(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d'\"' -f2)"
+    think_thought "Sistema operativo: $(sed -n 's/^PRETTY_NAME=//p' /etc/os-release 2>/dev/null | tr -d '\"')"
     think_thought "Modello AI: $MODEL"
     think_thought "RAM: $(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}')"
     think_observe "Interfacce rete: $(ip -br addr 2>/dev/null | grep UP | awk '{print $1":"$3}' | tr '\n' ' ')"
@@ -4328,8 +4328,8 @@ REPBODY
     echo -e "${GREEN}║  📁 Evidenze: $case_dir${RESET}"
     echo -e "${GREEN}║  📋 Evidence Log: $evidence_log${RESET}"
     echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════╝${RESET}"
+    (while [ ! -s "$report_file" ]; do sleep 1; done; sleep 2; mousepad "$report_file") 2>/dev/null &
 }
-    sleep 2 && mousepad "$report_file" 2>/dev/null &
 
 # ═══════════════════════════════════════════════════════════════
 # FASE 28: CRIMINAL NETWORK INTELLIGENCE ENGINE (CNI)
