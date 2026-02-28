@@ -264,7 +264,7 @@ think_separator() { [[ -p "$THOUGHT_PIPE" ]] && echo "SEPARATOR" > "$THOUGHT_PIP
 start_session_log() {
     CURRENT_SESSION_LOG="$SESSION_DIR/session_$(date +%Y%m%d_%H%M%S).md"
     cat > "$CURRENT_SESSION_LOG" << SEOF
-# 🤖 Kali-AI v6.0 Session Log
+# 🤖 Kali-AI v$VERSION Session Log
 **Data:** $(date)
 **Host:** $(hostname) | **Modello:** $MODEL
 ---
@@ -984,7 +984,7 @@ pentest_generate_report() {
     
     cat > "$rf" << REOF
 # 🎯 Penetration Test Report
-## Kali-AI v6.0 — Cognitive Pentest Framework
+## Kali-AI v$VERSION — Cognitive Pentest Framework
 
 | Campo | Valore |
 |-------|--------|
@@ -998,7 +998,7 @@ pentest_generate_report() {
 ---
 
 ## 1. Executive Summary
-Penetration test autonomo multi-agente eseguito con Kali-AI v6.0.
+Penetration test autonomo multi-agente eseguito con Kali-AI v$VERSION.
 Il sistema ha impiegato agenti paralleli per ricognizione, scansione e enumerazione,
 seguiti da analisi cognitiva tramite Claude Opus 4.6.
 
@@ -1044,7 +1044,7 @@ REOF
 generate_report() {
     local rf="$REPORTS_DIR/report_$(date +%Y%m%d_%H%M%S).md"
     cat > "$rf" << REOF
-# Kali-AI v6.0 System Report - $(date)
+# Kali-AI v$VERSION System Report - $(date)
 ## Sistema
 - OS: $(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d'"' -f2) | Kernel: $(uname -r)
 - RAM: $(free -h | awk '/Mem:/{print $3"/"$2}') | CPU: $(nproc) core | Load: $(cat /proc/loadavg | awk '{print $1,$2,$3}')
@@ -1101,7 +1101,7 @@ benchmark_test() {
     
     # Genera report benchmark
     cat > "$bd/benchmark_report.md" << BEOF
-# 📊 Benchmark Report — Kali-AI v6.0
+# 📊 Benchmark Report — Kali-AI v$VERSION
 **Data:** $(date)
 **Target:** $target
 
@@ -1152,7 +1152,7 @@ export_thesis() {
     local funcs=$(grep -c "^[a-z_]*() {" ~/kali-ai/kali-ai.sh 2>/dev/null || echo 0)
     
     cat > "$od/documentazione/TESI_kali_ai.md" << DEOF
-# Kali-AI v6.0 — Cognitive Pentest Framework
+# Kali-AI v$VERSION — Cognitive Pentest Framework
 # Documentazione Tecnica per Tesi
 **Autore:** Antonio Telesca
 **Email:** $EMAIL
@@ -1282,7 +1282,7 @@ completa sul processo decisionale dell'AI.
 DEOF
 
     cat > "$od/INDICE.md" << IEOF
-# 📚 Kali-AI v6.0 — Materiale Tesi
+# 📚 Kali-AI v$VERSION — Materiale Tesi
 **Autore:** Antonio Telesca | **Data:** $(date)
 
 ## Contenuto
@@ -1342,7 +1342,6 @@ autonomous_command() {
         "pentest_enum") pentest_phase3_enum "$1" ;;
         "pentest_analyze") pentest_phase4_analyze "$1" ;;
         "pentest_report") pentest_generate_report "$1" ;;
-        mitre_analyze_scan "$PENTEST_RESULTS_DIR/scan/ports_*.txt"
         "benchmark") benchmark_test "$1" ;;
         "mitre") mitre_analyze_scan "$1" "$2" ;;
         "cve") cve_lookup "$1" "$2" ;;
@@ -1357,9 +1356,17 @@ autonomous_command() {
         "auto_tools") auto_select_tools "$1" "$2" ;;
         "tool_install") tool_ensure "$1" ;;
         "tool_update") tool_update "$1" ;;
+        "threat_intel") threat_intel_scan "$1" "$2" ;;
+        "forensic_report") generate_forensic_report "$1" "$2" "$3" "$4" ;;
+        "monitor_add") monitor_add_target "$1" "$2" "$3" ;;
+        "monitor_start") monitor_start "$1" ;;
+        "monitor_stop") monitor_stop ;;
+        "monitor_status") monitor_status ;;
+        "investigate") investigate_email "$1" "$2" ;;
         "osint") osint_full_scan "$1" ;;
         "web_vuln") website_vuln_scan "$1" ;;
-        "investigate") investigate_email "$1" "$2" ;;
+        "cni") cni_investigate "$1" "$2" ;;
+        "crypto_trace") crypto_trace_flow "$1" "$2" "$3" ;;
         "export_thesis") export_thesis ;;
         *) echo -e "${YELLOW}⚠️ $action non riconosciuto${RESET}" ;;
     esac
@@ -1426,6 +1433,17 @@ autonomous_command \"pentest_analyze\" \"TARGET\"
 autonomous_command \"pentest_report\" \"TARGET\"
 autonomous_command \"benchmark\" \"TARGET\" - confronto prestazionale
 autonomous_command \"export_thesis\" - genera materiale tesi
+autonomous_command \"threat_intel\" \"INDICATOR\" \"DESC\" - threat intelligence aggregator
+autonomous_command \"forensic_report\" \"NOME\" \"DESC\" - report forense per autorita
+autonomous_command \"monitor_add\" \"TARGET\" \"TYPE\" \"DESC\" - aggiungi a watchlist
+autonomous_command \"monitor_start\" \"300\" - avvia monitoraggio
+autonomous_command \"monitor_stop\" - ferma monitoraggio
+autonomous_command \"monitor_status\" - stato monitoraggio
+autonomous_command \"investigate\" \"EMAIL\" \"DESC\" - indagine email forense
+autonomous_command \"osint\" \"TARGET\" - OSINT completo
+autonomous_command \"web_vuln\" \"URL\" - vulnerability scan sito
+autonomous_command \"cni\" \"TARGET\" \"DESC\" - criminal network intelligence
+autonomous_command \"crypto_trace\" \"WALLET\" \"CHAIN\" \"DEPTH\" - traccia crypto
 autonomous_command \"report\" - report sistema
 
 REGOLE:
@@ -1436,6 +1454,15 @@ REGOLE:
 5. Il pentest apre MULTIPLI TERMINALI in parallelo automaticamente
 6. Per la tesi usa export_thesis
 7. Puoi usare piu comandi nello stesso blocco bash
+8. Per threat intelligence usa SEMPRE autonomous_command "threat_intel" "INDICATOR" "DESC"
+9. Per OSINT usa SEMPRE autonomous_command "osint" "TARGET"
+10. Per indagine email usa SEMPRE autonomous_command "investigate" "EMAIL" "DESC"
+11. Per criminal network usa SEMPRE autonomous_command "cni" "TARGET" "DESC"
+12. Per crypto tracing usa SEMPRE autonomous_command "crypto_trace" "WALLET" "CHAIN" "DEPTH"
+13. Per report forense usa SEMPRE autonomous_command "forensic_report" "NOME" "DESC"
+14. Per web vulnerability usa SEMPRE autonomous_command "web_vuln" "URL"
+15. Per monitoraggio usa autonomous_command "monitor_add" "monitor_start" "monitor_stop" "monitor_status"
+16. NON generare comandi manuali quando esiste un autonomous_command dedicato
 
 PERCORSI: Desktop=~/Desktop | Pentest=$PENTEST_DIR
 MEMORIA: $mem"
@@ -1514,7 +1541,7 @@ handle_special_commands() {
             return 0 ;;
         "stats")
             local p=$(cat "$USER_PROFILE" 2>/dev/null) m=$(cat "$MEMORY_FILE" 2>/dev/null)
-            echo -e "${CYAN}📊 Kali-AI v6.0 Stats${RESET}"
+            echo -e "${CYAN}📊 Kali-AI v$VERSION Stats${RESET}"
             echo "  Sessioni: $(echo "$p"|jq '.total_sessions//0') | Comandi: $(echo "$p"|jq '.total_commands//0')"
             echo "  OK: $(echo "$p"|jq '.successful_commands//0') | Fail: $(echo "$p"|jq '.failed_commands//0')"
             echo "  Pentests: $(echo "$p"|jq '.pentests_completed//0') | Appresi: $(echo "$m"|jq '.learned_commands|length')"
@@ -1563,7 +1590,7 @@ main() {
     think_result "Sistema pronto per operazioni"
     
     echo ""
-    echo -e "${GREEN}✅ Kali-AI v6.0 pronto! (Claude Opus 4.6)${RESET}"
+    echo -e "${GREEN}✅ Kali-AI v$VERSION pronto! (Claude Opus 4.6)${RESET}"
     echo -e "${YELLOW}💡 Parla naturalmente — 'help' per comandi${RESET}"
     echo -e "${CYAN}🧠 Thought Terminal attivo — guarda il ragionamento AI!${RESET}"
     echo -e "${MAGENTA}🎯 Prova: 'pentest 192.168.186.0/24'${RESET}"
@@ -1578,7 +1605,7 @@ main() {
     done
 }
 
-main
+# main spostato a fine file
 
 # ═══════════════════════════════════════════════════════════════
 # FASE 16: MITRE ATT&CK MAPPING ENGINE
@@ -3235,7 +3262,7 @@ credential_harvest() {
 |------|-----------|---------|-------|
 CREDHEAD
 
-    for f in "$scan_dir"/**/*.txt "$scan_dir"/**/*.xml "$scan_dir"/**/*.log 2>/dev/null; do
+    for f in "$scan_dir"/**/*.txt "$scan_dir"/**/*.xml "$scan_dir"/**/*.log; do
         [[ ! -f "$f" ]] && continue
         local fname=$(basename "$f")
         
@@ -6952,3 +6979,6 @@ monitor_status() {
     echo -e "${CYAN}Target attivi:${RESET}"
     jq -r '.targets[] | "  [\(.type)] \(.indicator) — \(.description) (alerts: \(.alert_count))"' "$MONITOR_CONFIG" 2>/dev/null
 }
+
+main
+
