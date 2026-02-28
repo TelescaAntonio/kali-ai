@@ -1612,6 +1612,7 @@ main() {
         case "$first_word" in
             threat_intel) autonomous_command "threat_intel" $(echo "$rest" | awk "{print \$1}") "$(echo "$rest" | cut -d" " -f2-)"; continue ;;
             investigate) autonomous_command "investigate" $(echo "$rest" | awk "{print \$1}") "$(echo "$rest" | cut -d" " -f2-)"; continue ;;
+            phone|telefono) local pd="$HOME/.kali_ai/reports/phone_$(date +%Y%m%d_%H%M%S)"; mkdir -p "$pd"; bash "$HOME/kali-ai/phone_investigate.sh" "$rest" "$pd" "$pd/evidence.log"; echo -e "\e[32m📱 Report: $pd/phone_intel/analysis.txt\e[0m"; mousepad "$pd/phone_intel/analysis.txt" 2>/dev/null & continue ;;
             osint) autonomous_command "osint" "$rest"; continue ;;
             web_vuln) autonomous_command "web_vuln" "$rest"; continue ;;
             cni) autonomous_command "cni" $(echo "$rest" | awk "{print \$1}") "$(echo "$rest" | cut -d" " -f2-)"; continue ;;
