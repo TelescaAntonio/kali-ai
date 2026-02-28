@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # ╔═══════════════════════════════════════════════════════════════╗
-# ║  🤖 KALI-AI v10.0 - COGNITIVE PENTEST FRAMEWORK                ║
+# ║  🤖 KALI-AI v12.0 - COGNITIVE PENTEST FRAMEWORK                ║
 # ║  Creato da Antonio Telesca                                    ║
 # ║  GitHub: https://github.com/TelescaAntonio/kali-ai            ║
 # ║  Powered by Claude Opus 4.6 (Anthropic)                      ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
 AUTHOR="Antonio Telesca"
-VERSION="10.0"
+VERSION="12.0"
 GITHUB_REPO="https://github.com/TelescaAntonio/kali-ai"
 EMAIL="antonio.telesca@irst-institute.eu"
 
@@ -1389,7 +1389,7 @@ process_conversation() {
     think_thought "Analizzo richiesta utente..."
     think_observe "Stato sistema: RAM=$(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}')"
     
-    local context="Sei KALI-AI v10.0, un COGNITIVE PENTEST FRAMEWORK per Kali Linux creato da Antonio Telesca.
+    local context="Sei KALI-AI v12.0, un COGNITIVE PENTEST FRAMEWORK per Kali Linux creato da Antonio Telesca.
 Powered by Claude Opus 4.6. HAI IL CONTROLLO COMPLETO DEL SISTEMA.
 
 STATO: $snap
@@ -1482,7 +1482,7 @@ handle_special_commands() {
         "clear"|"c") clear; return 0 ;;
         "help"|"h"|"aiuto")
             echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════╗${RESET}"
-            echo -e "${CYAN}║  🤖 KALI-AI v10.0 — COGNITIVE PENTEST FRAMEWORK                ║${RESET}"
+            echo -e "${CYAN}║  🤖 KALI-AI v12.0 — COGNITIVE PENTEST FRAMEWORK                ║${RESET}"
             echo -e "${CYAN}╠═══════════════════════════════════════════════════════════════╣${RESET}"
             echo -e "${CYAN}║${RESET}  🗣️  Parla naturalmente!                                     ${CYAN}║${RESET}"
             echo -e "${CYAN}║${RESET}                                                              ${CYAN}║${RESET}"
@@ -1536,7 +1536,7 @@ main() {
     clear
     echo -e "${RED}"
     echo "╔═══════════════════════════════════════════════════════════════╗"
-    echo "║  🤖 KALI-AI v10.0 — COGNITIVE PENTEST FRAMEWORK                ║"
+    echo "║  🤖 KALI-AI v12.0 — COGNITIVE PENTEST FRAMEWORK                ║"
     echo "║        Powered by Claude Opus 4.6 (Anthropic)                 ║"
     echo "║           Reasoning Engine + Multi-Agent System               ║"
     echo "║              Creato da Antonio Telesca                        ║"
@@ -1555,7 +1555,7 @@ main() {
     start_thought_terminal
     sleep 1
     
-    think_phase "KALI-AI v10.0 INIZIALIZZATO"
+    think_phase "KALI-AI v12.0 INIZIALIZZATO"
     think_thought "Sistema operativo: $(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d'\"' -f2)"
     think_thought "Modello AI: $MODEL"
     think_thought "RAM: $(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}')"
@@ -5709,4 +5709,545 @@ CRYPTOBODY
     echo -e "${RED}║  Risk Score: $risk_score/100 — $risk_level${RESET}"
     echo -e "${RED}║  📄 Report: $report_file${RESET}"
     echo -e "${RED}╚═══════════════════════════════════════════════════════════════╝${RESET}"
+}
+
+# ╔═══════════════════════════════════════════════════════════════════╗
+# ║  FASE 28: THREAT INTELLIGENCE FEED AGGREGATOR                    ║
+# ║  AbuseIPDB, VirusTotal, AlienVault OTX, Shodan — real-time      ║
+# ╚═══════════════════════════════════════════════════════════════════╝
+
+THREAT_INTEL_DIR="$BASE_DIR/threat_intel"
+THREAT_INTEL_KEYS="$BASE_DIR/api_keys.json"
+
+init_threat_intel() {
+    mkdir -p "$THREAT_INTEL_DIR"/{cache,reports}
+    if [[ ! -f "$THREAT_INTEL_KEYS" ]]; then
+        cat > "$THREAT_INTEL_KEYS" << 'APIKEYS'
+{
+    "abuseipdb": "",
+    "virustotal": "",
+    "alienvault_otx": "",
+    "shodan": ""
+}
+APIKEYS
+        echo -e "${YELLOW}⚠️ Configura le API key in $THREAT_INTEL_KEYS${RESET}"
+    fi
+}
+
+get_api_key() {
+    local service="$1"
+    jq -r ".$service // empty" "$THREAT_INTEL_KEYS" 2>/dev/null
+}
+
+# ──────────────────────────────────────────────
+# AbuseIPDB — IP reputation & abuse reports
+# ──────────────────────────────────────────────
+threat_abuseipdb() {
+    local ip="$1"
+    local output_dir="$2"
+    local api_key=$(get_api_key "abuseipdb")
+    
+    if [[ -z "$api_key" ]]; then
+        echo '{"error":"no_api_key","source":"abuseipdb"}' > "$output_dir/abuseipdb.json"
+        return 1
+    fi
+
+    think_observe "AbuseIPDB: interrogo $ip"
+
+    curl -sG "https://api.abuseipdb.com/api/v2/check" \
+        -d "ipAddress=$ip" \
+        -d "maxAgeInDays=90" \
+        -d "verbose" \
+        -H "Key: $api_key" \
+        -H "Accept: application/json" \
+        -o "$output_dir/abuseipdb.json" 2>/dev/null
+
+    local score=$(jq -r '.data.abuseConfidenceScore // 0' "$output_dir/abuseipdb.json" 2>/dev/null)
+    local reports=$(jq -r '.data.totalReports // 0' "$output_dir/abuseipdb.json" 2>/dev/null)
+    local country=$(jq -r '.data.countryCode // "N/A"' "$output_dir/abuseipdb.json" 2>/dev/null)
+    local isp=$(jq -r '.data.isp // "N/A"' "$output_dir/abuseipdb.json" 2>/dev/null)
+    local domain=$(jq -r '.data.domain // "N/A"' "$output_dir/abuseipdb.json" 2>/dev/null)
+    local usage=$(jq -r '.data.usageType // "N/A"' "$output_dir/abuseipdb.json" 2>/dev/null)
+    local tor=$(jq -r '.data.isTor // false' "$output_dir/abuseipdb.json" 2>/dev/null)
+    local whitelisted=$(jq -r '.data.isWhitelisted // false' "$output_dir/abuseipdb.json" 2>/dev/null)
+
+    # Ultimi report di abuso
+    jq -r '.data.reports[]? | "\(.reportedAt) | \(.categories | join(",")) | \(.comment // "no comment")"' \
+        "$output_dir/abuseipdb.json" 2>/dev/null | head -20 > "$output_dir/abuseipdb_reports.txt"
+
+    think_result "AbuseIPDB: score=$score%, reports=$reports, country=$country, tor=$tor"
+    echo "$score"
+}
+
+# ──────────────────────────────────────────────
+# VirusTotal — file/URL/IP/domain analysis
+# ──────────────────────────────────────────────
+threat_virustotal() {
+    local indicator="$1"
+    local indicator_type="$2"  # ip, domain, url, hash
+    local output_dir="$3"
+    local api_key=$(get_api_key "virustotal")
+
+    if [[ -z "$api_key" ]]; then
+        echo '{"error":"no_api_key","source":"virustotal"}' > "$output_dir/virustotal.json"
+        return 1
+    fi
+
+    think_observe "VirusTotal: analizzo $indicator (tipo: $indicator_type)"
+
+    local vt_url=""
+    case "$indicator_type" in
+        ip)     vt_url="https://www.virustotal.com/api/v3/ip_addresses/$indicator" ;;
+        domain) vt_url="https://www.virustotal.com/api/v3/domains/$indicator" ;;
+        hash)   vt_url="https://www.virustotal.com/api/v3/files/$indicator" ;;
+        url)
+            local url_id=$(echo -n "$indicator" | base64 -w0 | tr '+/' '-_' | tr -d '=')
+            vt_url="https://www.virustotal.com/api/v3/urls/$url_id"
+            ;;
+    esac
+
+    curl -s "$vt_url" \
+        -H "x-apikey: $api_key" \
+        -o "$output_dir/virustotal.json" 2>/dev/null
+
+    local malicious=$(jq -r '.data.attributes.last_analysis_stats.malicious // 0' "$output_dir/virustotal.json" 2>/dev/null)
+    local suspicious=$(jq -r '.data.attributes.last_analysis_stats.suspicious // 0' "$output_dir/virustotal.json" 2>/dev/null)
+    local harmless=$(jq -r '.data.attributes.last_analysis_stats.harmless // 0' "$output_dir/virustotal.json" 2>/dev/null)
+    local undetected=$(jq -r '.data.attributes.last_analysis_stats.undetected // 0' "$output_dir/virustotal.json" 2>/dev/null)
+    local reputation=$(jq -r '.data.attributes.reputation // 0' "$output_dir/virustotal.json" 2>/dev/null)
+
+    # Dettagli engine che hanno flaggato
+    jq -r '.data.attributes.last_analysis_results | to_entries[] | select(.value.category == "malicious") | "\(.key): \(.value.result)"' \
+        "$output_dir/virustotal.json" 2>/dev/null > "$output_dir/vt_detections.txt"
+
+    # Relazioni (communicating files, referrer files, etc.)
+    if [[ "$indicator_type" == "ip" || "$indicator_type" == "domain" ]]; then
+        curl -s "${vt_url}/communicating_files?limit=10" \
+            -H "x-apikey: $api_key" \
+            -o "$output_dir/vt_comm_files.json" 2>/dev/null
+        
+        curl -s "${vt_url}/resolutions?limit=20" \
+            -H "x-apikey: $api_key" \
+            -o "$output_dir/vt_resolutions.json" 2>/dev/null
+    fi
+
+    think_result "VirusTotal: malicious=$malicious, suspicious=$suspicious, harmless=$harmless, reputation=$reputation"
+    echo "$malicious"
+}
+
+# ──────────────────────────────────────────────
+# AlienVault OTX — threat pulses & indicators
+# ──────────────────────────────────────────────
+threat_alienvault() {
+    local indicator="$1"
+    local indicator_type="$2"  # IPv4, domain, hostname, url, FileHash-MD5/SHA1/SHA256
+    local output_dir="$3"
+    local api_key=$(get_api_key "alienvault_otx")
+
+    think_observe "AlienVault OTX: interrogo $indicator"
+
+    local otx_type=""
+    case "$indicator_type" in
+        ip|IPv4)    otx_type="IPv4" ;;
+        domain)     otx_type="domain" ;;
+        hostname)   otx_type="hostname" ;;
+        url)        otx_type="url" ;;
+        hash|md5|sha1|sha256) otx_type="file" ;;
+    esac
+
+    local headers=""
+    [[ -n "$api_key" ]] && headers="-H \"X-OTX-API-KEY: $api_key\""
+
+    # General info
+    curl -s "https://otx.alienvault.com/api/v1/indicators/$otx_type/$indicator/general" \
+        ${api_key:+-H "X-OTX-API-KEY: $api_key"} \
+        -o "$output_dir/otx_general.json" 2>/dev/null
+
+    # Pulse info (threat campaigns)
+    curl -s "https://otx.alienvault.com/api/v1/indicators/$otx_type/$indicator/general" \
+        ${api_key:+-H "X-OTX-API-KEY: $api_key"} \
+        -o "$output_dir/otx_pulses.json" 2>/dev/null
+
+    # Geo info per IP
+    if [[ "$otx_type" == "IPv4" ]]; then
+        curl -s "https://otx.alienvault.com/api/v1/indicators/IPv4/$indicator/geo" \
+            ${api_key:+-H "X-OTX-API-KEY: $api_key"} \
+            -o "$output_dir/otx_geo.json" 2>/dev/null
+
+        curl -s "https://otx.alienvault.com/api/v1/indicators/IPv4/$indicator/malware" \
+            ${api_key:+-H "X-OTX-API-KEY: $api_key"} \
+            -o "$output_dir/otx_malware.json" 2>/dev/null
+
+        curl -s "https://otx.alienvault.com/api/v1/indicators/IPv4/$indicator/passive_dns" \
+            ${api_key:+-H "X-OTX-API-KEY: $api_key"} \
+            -o "$output_dir/otx_passive_dns.json" 2>/dev/null
+    fi
+
+    local pulse_count=$(jq -r '.pulse_info.count // 0' "$output_dir/otx_general.json" 2>/dev/null)
+    local reputation_val=$(jq -r '.reputation // 0' "$output_dir/otx_general.json" 2>/dev/null)
+
+    # Estrai nomi delle campagne
+    jq -r '.pulse_info.pulses[]? | "\(.name) | created: \(.created) | tags: \(.tags | join(", "))"' \
+        "$output_dir/otx_general.json" 2>/dev/null | head -15 > "$output_dir/otx_campaigns.txt"
+
+    think_result "AlienVault OTX: pulses=$pulse_count, reputation=$reputation_val"
+    echo "$pulse_count"
+}
+
+# ──────────────────────────────────────────────
+# Shodan — device/service intelligence
+# ──────────────────────────────────────────────
+threat_shodan() {
+    local ip="$1"
+    local output_dir="$2"
+    local api_key=$(get_api_key "shodan")
+
+    if [[ -z "$api_key" ]]; then
+        echo '{"error":"no_api_key","source":"shodan"}' > "$output_dir/shodan.json"
+        return 1
+    fi
+
+    think_observe "Shodan: interrogo $ip"
+
+    curl -s "https://api.shodan.io/shodan/host/$ip?key=$api_key" \
+        -o "$output_dir/shodan.json" 2>/dev/null
+
+    local ports=$(jq -r '.ports // [] | join(", ")' "$output_dir/shodan.json" 2>/dev/null)
+    local os=$(jq -r '.os // "N/A"' "$output_dir/shodan.json" 2>/dev/null)
+    local org=$(jq -r '.org // "N/A"' "$output_dir/shodan.json" 2>/dev/null)
+    local vulns=$(jq -r '.vulns // [] | length' "$output_dir/shodan.json" 2>/dev/null)
+    local hostnames=$(jq -r '.hostnames // [] | join(", ")' "$output_dir/shodan.json" 2>/dev/null)
+    local city=$(jq -r '.city // "N/A"' "$output_dir/shodan.json" 2>/dev/null)
+    local country=$(jq -r '.country_name // "N/A"' "$output_dir/shodan.json" 2>/dev/null)
+
+    # Estrai servizi dettagliati
+    jq -r '.data[]? | "Port \(.port)/\(.transport): \(.product // "unknown") \(.version // "") [\(.module // "")]"' \
+        "$output_dir/shodan.json" 2>/dev/null > "$output_dir/shodan_services.txt"
+
+    # Estrai vulnerabilità
+    jq -r '.vulns // {} | keys[]' "$output_dir/shodan.json" 2>/dev/null > "$output_dir/shodan_vulns.txt"
+
+    think_result "Shodan: ports=[$ports], os=$os, org=$org, vulns=$vulns, city=$city"
+    echo "$vulns"
+}
+
+# ╔═══════════════════════════════════════════════════════════════════╗
+# ║  MASTER THREAT INTELLIGENCE — orchestratore parallelo            ║
+# ╚═══════════════════════════════════════════════════════════════════╝
+
+threat_intel_scan() {
+    local indicator="$1"
+    local description="${2:-Analisi automatica}"
+    
+    think_phase "THREAT INTELLIGENCE AGGREGATOR"
+    think_observe "Target: $indicator — $description"
+
+    init_threat_intel
+
+    local scan_id="THREAT_$(date +%Y%m%d_%H%M%S)"
+    local scan_dir="$THREAT_INTEL_DIR/$scan_id"
+    mkdir -p "$scan_dir"/{abuseipdb,virustotal,alienvault,shodan,combined}
+
+    # Determina tipo di indicatore
+    local ind_type="unknown"
+    if [[ "$indicator" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        ind_type="ip"
+    elif [[ "$indicator" =~ ^[a-fA-F0-9]{32}$ ]]; then
+        ind_type="hash"  # MD5
+    elif [[ "$indicator" =~ ^[a-fA-F0-9]{40}$ ]]; then
+        ind_type="hash"  # SHA1
+    elif [[ "$indicator" =~ ^[a-fA-F0-9]{64}$ ]]; then
+        ind_type="hash"  # SHA256
+    elif [[ "$indicator" =~ ^https?:// ]]; then
+        ind_type="url"
+    elif [[ "$indicator" =~ \. ]]; then
+        ind_type="domain"
+    fi
+
+    think_thought "Indicatore classificato come: $ind_type"
+
+    # ── LANCIO AGENTI PARALLELI ──────────────────
+    echo -e "${CYAN}🔄 Lancio 4 agenti di intelligence in parallelo...${RESET}"
+
+    local abuse_score=0
+    local vt_malicious=0
+    local otx_pulses=0
+    local shodan_vulns=0
+
+    if [[ "$ind_type" == "ip" ]]; then
+        # Tutti e 4 i feed per IP
+        threat_abuseipdb "$indicator" "$scan_dir/abuseipdb" &
+        local pid_abuse=$!
+        
+        threat_virustotal "$indicator" "ip" "$scan_dir/virustotal" &
+        local pid_vt=$!
+        
+        threat_alienvault "$indicator" "IPv4" "$scan_dir/alienvault" &
+        local pid_otx=$!
+        
+        threat_shodan "$indicator" "$scan_dir/shodan" &
+        local pid_shodan=$!
+
+        # Attendi tutti
+        wait $pid_abuse 2>/dev/null; abuse_score=$(cat "$scan_dir/abuseipdb/abuseipdb.json" 2>/dev/null | jq -r '.data.abuseConfidenceScore // 0')
+        wait $pid_vt 2>/dev/null; vt_malicious=$(jq -r '.data.attributes.last_analysis_stats.malicious // 0' "$scan_dir/virustotal/virustotal.json" 2>/dev/null)
+        wait $pid_otx 2>/dev/null; otx_pulses=$(jq -r '.pulse_info.count // 0' "$scan_dir/alienvault/otx_general.json" 2>/dev/null)
+        wait $pid_shodan 2>/dev/null; shodan_vulns=$(jq -r '.vulns // [] | length' "$scan_dir/shodan/shodan.json" 2>/dev/null)
+
+    elif [[ "$ind_type" == "domain" ]]; then
+        threat_virustotal "$indicator" "domain" "$scan_dir/virustotal" &
+        local pid_vt=$!
+        
+        threat_alienvault "$indicator" "domain" "$scan_dir/alienvault" &
+        local pid_otx=$!
+
+        # Risolvi IP per AbuseIPDB e Shodan
+        local resolved_ip=$(dig +short "$indicator" 2>/dev/null | grep -oP '^\d+\.\d+\.\d+\.\d+$' | head -1)
+        if [[ -n "$resolved_ip" ]]; then
+            think_thought "Dominio risolto a IP: $resolved_ip"
+            threat_abuseipdb "$resolved_ip" "$scan_dir/abuseipdb" &
+            local pid_abuse=$!
+            threat_shodan "$resolved_ip" "$scan_dir/shodan" &
+            local pid_shodan=$!
+            wait $pid_abuse 2>/dev/null
+            wait $pid_shodan 2>/dev/null
+            abuse_score=$(jq -r '.data.abuseConfidenceScore // 0' "$scan_dir/abuseipdb/abuseipdb.json" 2>/dev/null)
+            shodan_vulns=$(jq -r '.vulns // [] | length' "$scan_dir/shodan/shodan.json" 2>/dev/null)
+        fi
+
+        wait $pid_vt 2>/dev/null; vt_malicious=$(jq -r '.data.attributes.last_analysis_stats.malicious // 0' "$scan_dir/virustotal/virustotal.json" 2>/dev/null)
+        wait $pid_otx 2>/dev/null; otx_pulses=$(jq -r '.pulse_info.count // 0' "$scan_dir/alienvault/otx_general.json" 2>/dev/null)
+
+    elif [[ "$ind_type" == "hash" ]]; then
+        threat_virustotal "$indicator" "hash" "$scan_dir/virustotal" &
+        local pid_vt=$!
+        threat_alienvault "$indicator" "hash" "$scan_dir/alienvault" &
+        local pid_otx=$!
+        wait $pid_vt 2>/dev/null; vt_malicious=$(jq -r '.data.attributes.last_analysis_stats.malicious // 0' "$scan_dir/virustotal/virustotal.json" 2>/dev/null)
+        wait $pid_otx 2>/dev/null; otx_pulses=$(jq -r '.pulse_info.count // 0' "$scan_dir/alienvault/otx_general.json" 2>/dev/null)
+
+    elif [[ "$ind_type" == "url" ]]; then
+        threat_virustotal "$indicator" "url" "$scan_dir/virustotal" &
+        local pid_vt=$!
+        threat_alienvault "$indicator" "url" "$scan_dir/alienvault" &
+        local pid_otx=$!
+        wait $pid_vt 2>/dev/null; vt_malicious=$(jq -r '.data.attributes.last_analysis_stats.malicious // 0' "$scan_dir/virustotal/virustotal.json" 2>/dev/null)
+        wait $pid_otx 2>/dev/null; otx_pulses=$(jq -r '.pulse_info.count // 0' "$scan_dir/alienvault/otx_general.json" 2>/dev/null)
+    fi
+
+    # ── CALCOLO THREAT SCORE COMBINATO ────────────
+    local threat_score=0
+    local abuse_weight=0
+    local vt_weight=0
+    local otx_weight=0
+    local shodan_weight=0
+
+    # AbuseIPDB: score diretto 0-100, peso 30%
+    abuse_weight=$(echo "scale=0; $abuse_score * 30 / 100" | bc 2>/dev/null || echo 0)
+    
+    # VirusTotal: malicious detections, peso 35%
+    if [[ $vt_malicious -gt 20 ]]; then
+        vt_weight=35
+    elif [[ $vt_malicious -gt 10 ]]; then
+        vt_weight=25
+    elif [[ $vt_malicious -gt 5 ]]; then
+        vt_weight=18
+    elif [[ $vt_malicious -gt 0 ]]; then
+        vt_weight=10
+    fi
+
+    # AlienVault: pulse count, peso 20%
+    if [[ $otx_pulses -gt 10 ]]; then
+        otx_weight=20
+    elif [[ $otx_pulses -gt 5 ]]; then
+        otx_weight=14
+    elif [[ $otx_pulses -gt 0 ]]; then
+        otx_weight=8
+    fi
+
+    # Shodan: vulns count, peso 15%
+    if [[ $shodan_vulns -gt 10 ]]; then
+        shodan_weight=15
+    elif [[ $shodan_vulns -gt 5 ]]; then
+        shodan_weight=10
+    elif [[ $shodan_vulns -gt 0 ]]; then
+        shodan_weight=5
+    fi
+
+    threat_score=$((abuse_weight + vt_weight + otx_weight + shodan_weight))
+
+    # Classificazione
+    local threat_level="LOW"
+    local threat_color="$GREEN"
+    if [[ $threat_score -ge 70 ]]; then
+        threat_level="CRITICAL"
+        threat_color="$RED"
+    elif [[ $threat_score -ge 50 ]]; then
+        threat_level="HIGH"
+        threat_color="$RED"
+    elif [[ $threat_score -ge 30 ]]; then
+        threat_level="MEDIUM"
+        threat_color="$YELLOW"
+    fi
+
+    # ── GENERA REPORT ─────────────────────────────
+    local report_file="$scan_dir/combined/threat_intel_report.md"
+
+    cat > "$report_file" << THREATREPORT
+# 🔍 THREAT INTELLIGENCE REPORT
+## Kali-AI v$VERSION — Aggregated Threat Assessment
+
+| Campo | Valore |
+|-------|--------|
+| **Indicatore** | \`$indicator\` |
+| **Tipo** | $ind_type |
+| **Descrizione** | $description |
+| **Data analisi** | $(date '+%Y-%m-%d %H:%M:%S %Z') |
+| **Scan ID** | $scan_id |
+
+---
+
+## ⚠️ THREAT SCORE COMBINATO: $threat_score/100 — $threat_level
+
+| Fonte | Score/Finding | Peso | Contributo |
+|-------|---------------|------|------------|
+| AbuseIPDB | Confidence: ${abuse_score}% | 30% | $abuse_weight |
+| VirusTotal | Malicious: $vt_malicious | 35% | $vt_weight |
+| AlienVault OTX | Pulses: $otx_pulses | 20% | $otx_weight |
+| Shodan | Vulns: $shodan_vulns | 15% | $shodan_weight |
+
+---
+
+## 1. AbuseIPDB
+$(if [[ -f "$scan_dir/abuseipdb/abuseipdb.json" ]] && [[ ! $(jq -r '.error // empty' "$scan_dir/abuseipdb/abuseipdb.json" 2>/dev/null) ]]; then
+    echo "- **Abuse Score**: ${abuse_score}%"
+    echo "- **Total Reports**: $(jq -r '.data.totalReports // 0' "$scan_dir/abuseipdb/abuseipdb.json" 2>/dev/null)"
+    echo "- **Country**: $(jq -r '.data.countryCode // "N/A"' "$scan_dir/abuseipdb/abuseipdb.json" 2>/dev/null)"
+    echo "- **ISP**: $(jq -r '.data.isp // "N/A"' "$scan_dir/abuseipdb/abuseipdb.json" 2>/dev/null)"
+    echo "- **Domain**: $(jq -r '.data.domain // "N/A"' "$scan_dir/abuseipdb/abuseipdb.json" 2>/dev/null)"
+    echo "- **Tor**: $(jq -r '.data.isTor // false' "$scan_dir/abuseipdb/abuseipdb.json" 2>/dev/null)"
+    echo ""
+    echo "### Ultimi report di abuso:"
+    echo '```'
+    cat "$scan_dir/abuseipdb/abuseipdb_reports.txt" 2>/dev/null | head -10
+    echo '```'
+else
+    echo "⚠️ API key non configurata o errore"
+fi)
+
+## 2. VirusTotal
+$(if [[ -f "$scan_dir/virustotal/virustotal.json" ]] && [[ ! $(jq -r '.error // empty' "$scan_dir/virustotal/virustotal.json" 2>/dev/null) ]]; then
+    echo "- **Malicious**: $vt_malicious"
+    echo "- **Suspicious**: $(jq -r '.data.attributes.last_analysis_stats.suspicious // 0' "$scan_dir/virustotal/virustotal.json" 2>/dev/null)"
+    echo "- **Harmless**: $(jq -r '.data.attributes.last_analysis_stats.harmless // 0' "$scan_dir/virustotal/virustotal.json" 2>/dev/null)"
+    echo "- **Reputation**: $(jq -r '.data.attributes.reputation // 0' "$scan_dir/virustotal/virustotal.json" 2>/dev/null)"
+    echo ""
+    echo "### Detection Engines:"
+    echo '```'
+    cat "$scan_dir/virustotal/vt_detections.txt" 2>/dev/null | head -15
+    echo '```'
+else
+    echo "⚠️ API key non configurata o errore"
+fi)
+
+## 3. AlienVault OTX
+$(if [[ -f "$scan_dir/alienvault/otx_general.json" ]]; then
+    echo "- **Pulse Count**: $otx_pulses"
+    echo "- **Reputation**: $(jq -r '.reputation // 0' "$scan_dir/alienvault/otx_general.json" 2>/dev/null)"
+    echo ""
+    echo "### Campagne di minaccia associate:"
+    echo '```'
+    cat "$scan_dir/alienvault/otx_campaigns.txt" 2>/dev/null | head -10
+    echo '```'
+else
+    echo "⚠️ Dati non disponibili"
+fi)
+
+## 4. Shodan
+$(if [[ -f "$scan_dir/shodan/shodan.json" ]] && [[ ! $(jq -r '.error // empty' "$scan_dir/shodan/shodan.json" 2>/dev/null) ]]; then
+    echo "- **OS**: $(jq -r '.os // "N/A"' "$scan_dir/shodan/shodan.json" 2>/dev/null)"
+    echo "- **Organization**: $(jq -r '.org // "N/A"' "$scan_dir/shodan/shodan.json" 2>/dev/null)"
+    echo "- **City**: $(jq -r '.city // "N/A"' "$scan_dir/shodan/shodan.json" 2>/dev/null)"
+    echo "- **Country**: $(jq -r '.country_name // "N/A"' "$scan_dir/shodan/shodan.json" 2>/dev/null)"
+    echo "- **Ports**: $(jq -r '.ports // [] | join(", ")' "$scan_dir/shodan/shodan.json" 2>/dev/null)"
+    echo "- **Vulnerabilities**: $shodan_vulns"
+    echo ""
+    echo "### Servizi esposti:"
+    echo '```'
+    cat "$scan_dir/shodan/shodan_services.txt" 2>/dev/null | head -15
+    echo '```'
+    echo ""
+    echo "### CVE note:"
+    echo '```'
+    cat "$scan_dir/shodan/shodan_vulns.txt" 2>/dev/null | head -20
+    echo '```'
+else
+    echo "⚠️ API key non configurata o errore"
+fi)
+
+---
+
+## 🎯 Raccomandazioni Operative
+
+$(if [[ $threat_score -ge 70 ]]; then
+    echo "### 🔴 LIVELLO CRITICO — Azione immediata richiesta"
+    echo "1. **BLOCCARE** immediatamente l'indicatore su tutti i perimetri"
+    echo "2. **ISOLARE** eventuali sistemi che hanno comunicato con questo indicatore"
+    echo "3. **VERIFICARE** i log degli ultimi 90 giorni per connessioni correlate"
+    echo "4. **SEGNALARE** a CERT-IT / Polizia Postale se correlato ad attacco in corso"
+    echo "5. **PRESERVARE** tutti i log come evidenza digitale"
+elif [[ $threat_score -ge 50 ]]; then
+    echo "### 🟠 LIVELLO ALTO — Monitoraggio intensivo"
+    echo "1. **MONITORARE** tutte le connessioni da/verso questo indicatore"
+    echo "2. **AGGIORNARE** le blacklist firewall/IDS"
+    echo "3. **ANALIZZARE** il traffico storico per correlazioni"
+    echo "4. **VALUTARE** il blocco preventivo"
+elif [[ $threat_score -ge 30 ]]; then
+    echo "### 🟡 LIVELLO MEDIO — Attenzione consigliata"
+    echo "1. **OSSERVARE** il comportamento dell'indicatore nei prossimi giorni"
+    echo "2. **VERIFICARE** se correlato ad altri IoC noti"
+    echo "3. **DOCUMENTARE** per riferimento futuro"
+else
+    echo "### 🟢 LIVELLO BASSO — Nessuna azione immediata"
+    echo "1. L'indicatore non risulta attualmente malevolo"
+    echo "2. Continuare il monitoraggio di routine"
+fi)
+
+---
+
+## 📁 File generati
+| File | Percorso |
+|------|----------|
+| Report principale | $report_file |
+| AbuseIPDB raw | $scan_dir/abuseipdb/abuseipdb.json |
+| VirusTotal raw | $scan_dir/virustotal/virustotal.json |
+| AlienVault raw | $scan_dir/alienvault/otx_general.json |
+| Shodan raw | $scan_dir/shodan/shodan.json |
+| VT Detections | $scan_dir/virustotal/vt_detections.txt |
+| Shodan Services | $scan_dir/shodan/shodan_services.txt |
+| OTX Campaigns | $scan_dir/alienvault/otx_campaigns.txt |
+
+---
+*Threat Intelligence Report generato da Kali-AI v$VERSION*
+*Fonti: AbuseIPDB, VirusTotal, AlienVault OTX, Shodan*
+*⚠️ Intelligence classificata — solo per uso autorizzato*
+THREATREPORT
+
+    # Sommario a video
+    echo ""
+    echo -e "${threat_color}╔════════════════════════════════════════════════════╗${RESET}"
+    echo -e "${threat_color}║  🔍 THREAT INTELLIGENCE SUMMARY                   ║${RESET}"
+    echo -e "${threat_color}╠════════════════════════════════════════════════════╣${RESET}"
+    echo -e "${threat_color}║  Indicatore: $indicator${RESET}"
+    echo -e "${threat_color}║  Tipo: $ind_type${RESET}"
+    echo -e "${threat_color}║  ─────────────────────────────────────────────── ║${RESET}"
+    echo -e "${threat_color}║  AbuseIPDB:    ${abuse_score}% confidence${RESET}"
+    echo -e "${threat_color}║  VirusTotal:   ${vt_malicious} engine malicious${RESET}"
+    echo -e "${threat_color}║  AlienVault:   ${otx_pulses} threat pulses${RESET}"
+    echo -e "${threat_color}║  Shodan:       ${shodan_vulns} known vulns${RESET}"
+    echo -e "${threat_color}║  ─────────────────────────────────────────────── ║${RESET}"
+    echo -e "${threat_color}║  THREAT SCORE: $threat_score/100 — $threat_level${RESET}"
+    echo -e "${threat_color}╚════════════════════════════════════════════════════╝${RESET}"
+    echo ""
+    echo -e "${GREEN}📄 Report completo: $report_file${RESET}"
 }
