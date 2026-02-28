@@ -4,6 +4,7 @@
 [![AI Engine](https://img.shields.io/badge/AI-Claude%20Opus%204.6-purple.svg)]()
 [![Lines](https://img.shields.io/badge/lines-6954-green.svg)]()
 [![Modules](https://img.shields.io/badge/modules-32-orange.svg)]()
+[![Telegram Bot](https://img.shields.io/badge/Telegram-Bot%20Control-blue.svg?logo=telegram)]()
 
 ## Overview
 
