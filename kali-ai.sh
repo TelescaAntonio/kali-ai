@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # ╔═══════════════════════════════════════════════════════════════╗
-# ║  🤖 KALI-AI v9.0 - COGNITIVE PENTEST FRAMEWORK                ║
+# ║  🤖 KALI-AI v10.0 - COGNITIVE PENTEST FRAMEWORK                ║
 # ║  Creato da Antonio Telesca                                    ║
 # ║  GitHub: https://github.com/TelescaAntonio/kali-ai            ║
 # ║  Powered by Claude Opus 4.6 (Anthropic)                      ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
 AUTHOR="Antonio Telesca"
-VERSION="9.0"
+VERSION="10.0"
 GITHUB_REPO="https://github.com/TelescaAntonio/kali-ai"
 EMAIL="antonio.telesca@irst-institute.eu"
 
@@ -1359,6 +1359,7 @@ autonomous_command() {
         "tool_update") tool_update "$1" ;;
         "osint") osint_full_scan "$1" ;;
         "web_vuln") website_vuln_scan "$1" ;;
+        "investigate") investigate_email "$1" "$2" ;;
         "export_thesis") export_thesis ;;
         *) echo -e "${YELLOW}⚠️ $action non riconosciuto${RESET}" ;;
     esac
@@ -1388,7 +1389,7 @@ process_conversation() {
     think_thought "Analizzo richiesta utente..."
     think_observe "Stato sistema: RAM=$(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}')"
     
-    local context="Sei KALI-AI v9.0, un COGNITIVE PENTEST FRAMEWORK per Kali Linux creato da Antonio Telesca.
+    local context="Sei KALI-AI v10.0, un COGNITIVE PENTEST FRAMEWORK per Kali Linux creato da Antonio Telesca.
 Powered by Claude Opus 4.6. HAI IL CONTROLLO COMPLETO DEL SISTEMA.
 
 STATO: $snap
@@ -1481,7 +1482,7 @@ handle_special_commands() {
         "clear"|"c") clear; return 0 ;;
         "help"|"h"|"aiuto")
             echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════╗${RESET}"
-            echo -e "${CYAN}║  🤖 KALI-AI v9.0 — COGNITIVE PENTEST FRAMEWORK                ║${RESET}"
+            echo -e "${CYAN}║  🤖 KALI-AI v10.0 — COGNITIVE PENTEST FRAMEWORK                ║${RESET}"
             echo -e "${CYAN}╠═══════════════════════════════════════════════════════════════╣${RESET}"
             echo -e "${CYAN}║${RESET}  🗣️  Parla naturalmente!                                     ${CYAN}║${RESET}"
             echo -e "${CYAN}║${RESET}                                                              ${CYAN}║${RESET}"
@@ -1535,7 +1536,7 @@ main() {
     clear
     echo -e "${RED}"
     echo "╔═══════════════════════════════════════════════════════════════╗"
-    echo "║  🤖 KALI-AI v9.0 — COGNITIVE PENTEST FRAMEWORK                ║"
+    echo "║  🤖 KALI-AI v10.0 — COGNITIVE PENTEST FRAMEWORK                ║"
     echo "║        Powered by Claude Opus 4.6 (Anthropic)                 ║"
     echo "║           Reasoning Engine + Multi-Agent System               ║"
     echo "║              Creato da Antonio Telesca                        ║"
@@ -1554,7 +1555,7 @@ main() {
     start_thought_terminal
     sleep 1
     
-    think_phase "KALI-AI v9.0 INIZIALIZZATO"
+    think_phase "KALI-AI v10.0 INIZIALIZZATO"
     think_thought "Sistema operativo: $(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d'\"' -f2)"
     think_thought "Modello AI: $MODEL"
     think_thought "RAM: $(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}')"
@@ -3880,4 +3881,453 @@ VULNBODY
 
     think_result "Web Vuln Scan: nikto=$nikto_vulns, dirs=$dirs_found, ssl=$ssl_issues"
     echo -e "${GREEN}🛡️ Web Vuln Report: $report_file${RESET}"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# FASE 27: EMAIL FORENSICS & THREAT INVESTIGATION ENGINE
+# ═══════════════════════════════════════════════════════════════
+
+investigate_email() {
+    local suspect_email="$1"
+    local case_description="${2:-Indagine email sospetta}"
+    local case_dir="$REPORTS_DIR/investigation_$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$case_dir"/{email_trace,ip_trace,domain_intel,social_links,vpn_detection,timeline,evidence}
+    
+    think_phase "🔎 INVESTIGAZIONE EMAIL: $suspect_email"
+    think_strategy "Attivo tutti i protocolli di investigazione simultaneamente..."
+    think_thought "Caso: $case_description"
+    
+    tool_ensure_list curl jq whois dnsrecon nmap theHarvester
+    
+    # Estrai dominio dalla email
+    local email_domain=$(echo "$suspect_email" | grep -oP '@\K.*')
+    local email_user=$(echo "$suspect_email" | grep -oP '^[^@]+')
+    
+    think_observe "Email: $suspect_email | User: $email_user | Dominio: $email_domain"
+    
+    local report_file="$case_dir/investigation_report.txt"
+    local evidence_log="$case_dir/evidence/evidence_chain.txt"
+    
+    # Inizia catena di custodia
+    cat > "$evidence_log" << EVIDEOF
+═══════════════════════════════════════════════════════════════
+CATENA DI CUSTODIA DIGITALE — EVIDENCE LOG
+═══════════════════════════════════════════════════════════════
+Caso: $case_description
+Email sospetta: $suspect_email
+Data inizio indagine: $(date)
+Investigatore: Kali-AI v$VERSION (Automated)
+Operatore: $AUTHOR
+
+TIMELINE EVIDENZE:
+EVIDEOF
+
+    cat > "$report_file" << REPHEAD
+═══════════════════════════════════════════════════════════════
+        KALI-AI v$VERSION — RAPPORTO INVESTIGATIVO
+           Email Forensics & Threat Investigation
+═══════════════════════════════════════════════════════════════
+
+DATI CASO
+  Oggetto:         $case_description
+  Email sospetta:  $suspect_email
+  Dominio:         $email_domain
+  Data indagine:   $(date)
+  Investigatore:   Kali-AI v$VERSION Automated Forensics
+  Operatore:       $AUTHOR
+
+═══════════════════════════════════════════════════════════════
+REPHEAD
+
+    # ═══════════════════════════════════════════════
+    # AGENTE 1: DOMAIN INTELLIGENCE (background)
+    # ═══════════════════════════════════════════════
+    (
+        think_agent "Agent 1: Domain Intelligence — $email_domain"
+        
+        # WHOIS
+        local whois_data=$(whois "$email_domain" 2>/dev/null)
+        echo "$whois_data" > "$case_dir/domain_intel/whois_raw.txt"
+        
+        local registrant=$(echo "$whois_data" | grep -iE "registrant|admin name|tech name" | head -10)
+        local registrar=$(echo "$whois_data" | grep -i "registrar:" | head -1 | sed 's/.*: //')
+        local creation=$(echo "$whois_data" | grep -iE "creation|created" | head -1 | sed 's/.*: //')
+        local country=$(echo "$whois_data" | grep -iE "country|registrant country" | head -1 | sed 's/.*: //')
+        local nameservers=$(echo "$whois_data" | grep -iE "name server|nserver" | sed 's/.*: //')
+        
+        # DNS
+        local mx=$(dig +short "$email_domain" MX 2>/dev/null)
+        local spf=$(dig +short "$email_domain" TXT 2>/dev/null | grep -i "spf")
+        local dmarc=$(dig +short "_dmarc.$email_domain" TXT 2>/dev/null)
+        local dkim_selectors="default google selector1 selector2 k1 mandrill"
+        local dkim_found=""
+        for sel in $dkim_selectors; do
+            local dk=$(dig +short "${sel}._domainkey.$email_domain" TXT 2>/dev/null)
+            [[ -n "$dk" ]] && dkim_found="$dkim_found\n  $sel: $dk"
+        done
+        
+        local ip=$(dig +short "$email_domain" A 2>/dev/null | head -1)
+        local rdns=$(dig +short -x "$ip" 2>/dev/null)
+        
+        # Verifica se dominio e temporaneo/disposable
+        local disposable="NO"
+        local disposable_domains="tempmail guerrillamail mailinator throwaway yopmail trashmail 10minutemail dispostable"
+        for dd in $disposable_domains; do
+            echo "$email_domain" | grep -qi "$dd" && disposable="SI — DOMINIO TEMPORANEO"
+        done
+        
+        # Eta del dominio
+        local domain_age="Sconosciuta"
+        if [[ -n "$creation" ]]; then
+            local creation_year=$(echo "$creation" | grep -oP '\d{4}' | head -1)
+            local current_year=$(date +%Y)
+            if [[ -n "$creation_year" ]]; then
+                domain_age="$((current_year - creation_year)) anni (creato: $creation)"
+            fi
+        fi
+        
+        cat > "$case_dir/domain_intel/analysis.txt" << DOMEOF
+ANALISI DOMINIO: $email_domain
+  Registrar:      $registrar
+  Creazione:      $creation
+  Età dominio:    $domain_age
+  Paese:          $country
+  Disposable:     $disposable
+  IP:             $ip
+  Reverse DNS:    $rdns
+  Name Servers:   $nameservers
+  MX Records:     $mx
+  SPF:            $spf
+  DMARC:          $dmarc
+  DKIM:           $dkim_found
+  
+REGISTRANT INFO:
+$registrant
+DOMEOF
+        
+        echo "[$(date +%H:%M:%S)] EVIDENCE: Domain Intel completato — $email_domain → IP:$ip, Registrar:$registrar, Country:$country" >> "$evidence_log"
+        echo "AGENT1_DONE" > "$case_dir/.agent1_done"
+    ) &
+    local agent1_pid=$!
+
+    # ═══════════════════════════════════════════════
+    # AGENTE 2: IP TRACING & GEOLOCATION (background)
+    # ═══════════════════════════════════════════════
+    (
+        think_agent "Agent 2: IP Tracing & Geolocation"
+        
+        local ip=$(dig +short "$email_domain" A 2>/dev/null | head -1)
+        
+        if [[ -n "$ip" ]]; then
+            # IP Geolocation
+            local geoip=$(curl -s "http://ip-api.com/json/$ip" 2>/dev/null)
+            echo "$geoip" > "$case_dir/ip_trace/geoip.json"
+            
+            local geo_country=$(echo "$geoip" | jq -r '.country // "N/A"')
+            local geo_city=$(echo "$geoip" | jq -r '.city // "N/A"')
+            local geo_region=$(echo "$geoip" | jq -r '.regionName // "N/A"')
+            local geo_isp=$(echo "$geoip" | jq -r '.isp // "N/A"')
+            local geo_org=$(echo "$geoip" | jq -r '.org // "N/A"')
+            local geo_as=$(echo "$geoip" | jq -r '.as // "N/A"')
+            local geo_lat=$(echo "$geoip" | jq -r '.lat // "N/A"')
+            local geo_lon=$(echo "$geoip" | jq -r '.lon // "N/A"')
+            local geo_proxy=$(echo "$geoip" | jq -r '.proxy // false')
+            local geo_hosting=$(echo "$geoip" | jq -r '.hosting // false')
+            
+            # VPN/Proxy detection
+            local vpn_detected="NO"
+            local vpn_indicators=""
+            
+            # Check known VPN/Proxy ASNs
+            echo "$geo_as" | grep -qi "nord\|express\|surfshark\|proton\|mullvad\|cyberghost\|private internet\|tunnelbear" && {
+                vpn_detected="SI — VPN COMMERCIALE RILEVATA"
+                vpn_indicators="ASN associato a provider VPN noto"
+            }
+            
+            echo "$geo_org" | grep -qi "hosting\|cloud\|server\|digital ocean\|aws\|azure\|google cloud\|ovh\|hetzner\|vultr\|linode" && {
+                vpn_detected="PROBABILE — IP di hosting/cloud"
+                vpn_indicators="$vpn_indicators | IP appartiene a provider hosting"
+            }
+            
+            [[ "$geo_proxy" == "true" ]] && vpn_detected="SI — PROXY RILEVATO"
+            [[ "$geo_hosting" == "true" ]] && vpn_indicators="$vpn_indicators | IP hosting confermato"
+            
+            # Traceroute
+            traceroute -m 15 -w 2 "$ip" > "$case_dir/ip_trace/traceroute.txt" 2>/dev/null
+            
+            # Port scan leggero
+            nmap -sV --top-ports 100 -T4 "$ip" -oN "$case_dir/ip_trace/portscan.txt" 2>/dev/null
+            
+            # Shodan-like info via headers
+            local server_headers=$(curl -sI --max-time 10 "http://$ip" 2>/dev/null)
+            echo "$server_headers" > "$case_dir/ip_trace/server_headers.txt"
+            
+            cat > "$case_dir/ip_trace/analysis.txt" << IPEOF
+ANALISI IP: $ip
+  Paese:          $geo_country
+  Regione:        $geo_region
+  Città:          $geo_city
+  Coordinate:     $geo_lat, $geo_lon
+  ISP:            $geo_isp
+  Organizzazione: $geo_org
+  ASN:            $geo_as
+  
+VPN/PROXY DETECTION:
+  VPN rilevata:   $vpn_detected
+  Indicatori:     $vpn_indicators
+  Proxy flag:     $geo_proxy
+  Hosting flag:   $geo_hosting
+  
+PORTE APERTE:
+$(grep "open" "$case_dir/ip_trace/portscan.txt" 2>/dev/null | head -20)
+
+TRACEROUTE:
+$(cat "$case_dir/ip_trace/traceroute.txt" 2>/dev/null | tail -15)
+IPEOF
+            
+            echo "[$(date +%H:%M:%S)] EVIDENCE: IP Trace — $ip → $geo_country/$geo_city, ISP:$geo_isp, VPN:$vpn_detected" >> "$evidence_log"
+        fi
+        
+        echo "AGENT2_DONE" > "$case_dir/.agent2_done"
+    ) &
+    local agent2_pid=$!
+
+    # ═══════════════════════════════════════════════
+    # AGENTE 3: EMAIL REPUTATION & BREACH CHECK (background)
+    # ═══════════════════════════════════════════════
+    (
+        think_agent "Agent 3: Email Reputation & Breach Check"
+        
+        # Check email format validity
+        local email_valid="SI"
+        echo "$suspect_email" | grep -qP '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$' || email_valid="NO — FORMATO NON VALIDO"
+        
+        # Check MX validity (dominio accetta email?)
+        local mx_valid=$(dig +short "$email_domain" MX 2>/dev/null)
+        local mx_status="NO — Nessun MX record (dominio non riceve email)"
+        [[ -n "$mx_valid" ]] && mx_status="SI — MX attivo"
+        
+        # Email age estimation (basato su quando il dominio è stato creato)
+        local domain_whois=$(whois "$email_domain" 2>/dev/null)
+        local domain_created=$(echo "$domain_whois" | grep -iE "creation|created" | head -1 | sed 's/.*: //')
+        
+        # Check se email appare in paste/leak databases (via API pubbliche)
+        local breach_check=""
+        
+        # Hunter.io verification (se disponibile)
+        local hunter_check=$(curl -s "https://api.hunter.io/v2/email-verifier?email=$suspect_email" 2>/dev/null | jq -r '.data.status // "unknown"' 2>/dev/null)
+        
+        # Gravatar check (email ha un profilo?)
+        local email_md5=$(echo -n "$suspect_email" | md5sum | awk '{print $1}')
+        local gravatar_check=$(curl -sI "https://www.gravatar.com/avatar/$email_md5?d=404" 2>/dev/null | head -1)
+        local has_gravatar="NO"
+        echo "$gravatar_check" | grep -q "200" && has_gravatar="SI — Profilo Gravatar trovato"
+        
+        cat > "$case_dir/email_trace/reputation.txt" << REPEOF
+ANALISI EMAIL: $suspect_email
+  Formato valido:     $email_valid
+  MX attivo:          $mx_status
+  Dominio creato:     $domain_created
+  Gravatar:           $has_gravatar
+  Hunter.io status:   $hunter_check
+  
+INDICATORI DI RISCHIO:
+$(echo "$email_domain" | grep -qiE "temp|trash|guerrilla|mailinator|throwaway|yop|disposable" && echo "  ⚠️ DOMINIO EMAIL TEMPORANEO/DISPOSABLE" || echo "  ✅ Dominio non in blacklist disposable")
+$(echo "$email_user" | grep -qP '^[a-z]{15,}$|^[0-9]+$|^[a-z]+[0-9]{4,}$' && echo "  ⚠️ USERNAME SOSPETTO (pattern automatico)" || echo "  ✅ Username con pattern normale")
+$([[ -z "$mx_valid" ]] && echo "  ⚠️ NESSUN MX — Il dominio potrebbe non esistere o essere falso" || echo "  ✅ MX record presente")
+REPEOF
+        
+        echo "[$(date +%H:%M:%S)] EVIDENCE: Email Reputation — Valid:$email_valid, MX:$mx_status, Gravatar:$has_gravatar" >> "$evidence_log"
+        echo "AGENT3_DONE" > "$case_dir/.agent3_done"
+    ) &
+    local agent3_pid=$!
+
+    # ═══════════════════════════════════════════════
+    # AGENTE 4: SOCIAL MEDIA OSINT (background)
+    # ═══════════════════════════════════════════════
+    (
+        think_agent "Agent 4: Social Media & Web Presence"
+        
+        # Cerca username su social media
+        local username="$email_user"
+        
+        local social_results=""
+        local platforms=(
+            "https://www.facebook.com/$username"
+            "https://twitter.com/$username"
+            "https://x.com/$username"
+            "https://www.instagram.com/$username"
+            "https://www.linkedin.com/in/$username"
+            "https://github.com/$username"
+            "https://www.reddit.com/user/$username"
+            "https://t.me/$username"
+            "https://www.tiktok.com/@$username"
+            "https://www.youtube.com/@$username"
+            "https://www.pinterest.com/$username"
+            "https://medium.com/@$username"
+            "https://keybase.io/$username"
+            "https://www.flickr.com/people/$username"
+            "https://steamcommunity.com/id/$username"
+        )
+        
+        for url in "${platforms[@]}"; do
+            local http_code=$(curl -sL -o /dev/null -w "%{http_code}" --max-time 5 "$url" 2>/dev/null)
+            if [[ "$http_code" == "200" ]]; then
+                echo "TROVATO: $url (HTTP $http_code)" >> "$case_dir/social_links/found.txt"
+            fi
+        done
+        
+        # Cerca l'email stessa nel web
+        local web_mentions=$(curl -s "https://www.google.com/search?q=%22$suspect_email%22&num=10" 2>/dev/null | \
+            grep -oP 'href="[^"]*"' | grep -v "google" | head -10)
+        echo "$web_mentions" > "$case_dir/social_links/web_mentions.txt"
+        
+        cat > "$case_dir/social_links/analysis.txt" << SOCEOF
+SOCIAL MEDIA OSINT: $username (da $suspect_email)
+
+PROFILI TROVATI:
+$(cat "$case_dir/social_links/found.txt" 2>/dev/null || echo "Nessun profilo trovato")
+
+MENZIONI WEB:
+$(cat "$case_dir/social_links/web_mentions.txt" 2>/dev/null | head -10 || echo "Nessuna menzione")
+SOCEOF
+        
+        local social_count=$(grep -c "TROVATO" "$case_dir/social_links/found.txt" 2>/dev/null || echo 0)
+        echo "[$(date +%H:%M:%S)] EVIDENCE: Social OSINT — $social_count profili trovati per username '$username'" >> "$evidence_log"
+        echo "AGENT4_DONE" > "$case_dir/.agent4_done"
+    ) &
+    local agent4_pid=$!
+
+    # ═══════════════════════════════════════════════
+    # AGENTE 5: HEADER ANALYSIS (se forniti)
+    # ═══════════════════════════════════════════════
+    (
+        think_agent "Agent 5: Infrastructure Analysis"
+        
+        local ip=$(dig +short "$email_domain" A 2>/dev/null | head -1)
+        
+        # Cerca altri domini sullo stesso IP (reverse IP)
+        if [[ -n "$ip" ]]; then
+            local reverse_ip=$(curl -s "https://api.hackertarget.com/reverseiplookup/?q=$ip" 2>/dev/null)
+            echo "$reverse_ip" > "$case_dir/domain_intel/reverse_ip.txt"
+            
+            # Subdomains via crt.sh
+            local subs=$(curl -s "https://crt.sh/?q=%25.$email_domain&output=json" 2>/dev/null | \
+                jq -r '.[].name_value' 2>/dev/null | sort -u | head -30)
+            echo "$subs" > "$case_dir/domain_intel/subdomains.txt"
+            
+            # SSL Certificate info
+            local cert_info=$(echo | openssl s_client -servername "$email_domain" -connect "$email_domain:443" 2>/dev/null | openssl x509 -noout -subject -issuer -dates 2>/dev/null)
+            echo "$cert_info" > "$case_dir/domain_intel/ssl_cert.txt"
+        fi
+        
+        cat > "$case_dir/domain_intel/infrastructure.txt" << INFRAEOF
+INFRASTRUTTURA: $email_domain
+
+ALTRI DOMINI SULLO STESSO IP ($ip):
+$(cat "$case_dir/domain_intel/reverse_ip.txt" 2>/dev/null | head -20)
+
+SUBDOMAINS:
+$(cat "$case_dir/domain_intel/subdomains.txt" 2>/dev/null | head -20)
+
+CERTIFICATO SSL:
+$(cat "$case_dir/domain_intel/ssl_cert.txt" 2>/dev/null)
+INFRAEOF
+        
+        echo "[$(date +%H:%M:%S)] EVIDENCE: Infrastructure — reverse IP, subdomains, SSL cert analizzati" >> "$evidence_log"
+        echo "AGENT5_DONE" > "$case_dir/.agent5_done"
+    ) &
+    local agent5_pid=$!
+
+    # ═══════════════════════════════════════════════
+    # ATTENDI TUTTI GLI AGENTI
+    # ═══════════════════════════════════════════════
+    think_thought "5 agenti investigativi attivi in parallelo..."
+    
+    local agents_done=0
+    while [[ $agents_done -lt 5 ]]; do
+        agents_done=0
+        for i in 1 2 3 4 5; do
+            [[ -f "$case_dir/.agent${i}_done" ]] && agents_done=$((agents_done + 1))
+        done
+        think_observe "Agenti completati: $agents_done/5"
+        sleep 2
+    done
+    
+    wait $agent1_pid $agent2_pid $agent3_pid $agent4_pid $agent5_pid 2>/dev/null
+    
+    think_result "Tutti gli agenti hanno completato l'indagine"
+
+    # ═══════════════════════════════════════════════
+    # COMPILAZIONE REPORT FINALE
+    # ═══════════════════════════════════════════════
+    think_phase "COMPILAZIONE REPORT INVESTIGATIVO"
+    
+    cat >> "$report_file" << REPBODY
+
+═══════════════════════════════════════════════════════════════
+1. ANALISI DOMINIO EMAIL
+═══════════════════════════════════════════════════════════════
+$(cat "$case_dir/domain_intel/analysis.txt" 2>/dev/null)
+
+═══════════════════════════════════════════════════════════════
+2. TRACCIAMENTO IP & GEOLOCALIZZAZIONE
+═══════════════════════════════════════════════════════════════
+$(cat "$case_dir/ip_trace/analysis.txt" 2>/dev/null)
+
+═══════════════════════════════════════════════════════════════
+3. REPUTAZIONE EMAIL & BREACH CHECK
+═══════════════════════════════════════════════════════════════
+$(cat "$case_dir/email_trace/reputation.txt" 2>/dev/null)
+
+═══════════════════════════════════════════════════════════════
+4. SOCIAL MEDIA & PRESENZA WEB
+═══════════════════════════════════════════════════════════════
+$(cat "$case_dir/social_links/analysis.txt" 2>/dev/null)
+
+═══════════════════════════════════════════════════════════════
+5. ANALISI INFRASTRUTTURA
+═══════════════════════════════════════════════════════════════
+$(cat "$case_dir/domain_intel/infrastructure.txt" 2>/dev/null)
+
+═══════════════════════════════════════════════════════════════
+6. CATENA DELLE EVIDENZE
+═══════════════════════════════════════════════════════════════
+$(cat "$evidence_log" 2>/dev/null)
+
+═══════════════════════════════════════════════════════════════
+7. CONCLUSIONI E RACCOMANDAZIONI
+═══════════════════════════════════════════════════════════════
+
+VALUTAZIONE MINACCIA:
+$(cat "$case_dir/ip_trace/analysis.txt" 2>/dev/null | grep -i "vpn" | head -3)
+$(cat "$case_dir/email_trace/reputation.txt" 2>/dev/null | grep "⚠️" | head -5)
+
+RACCOMANDAZIONI:
+  1. Conservare tutte le evidenze digitali (cartella: $case_dir)
+  2. Verificare gli header originali dell'email malevola
+  3. Segnalare l'IP sorgente al provider (abuse@)
+  4. Se VPN rilevata: richiedere log al provider tramite autorità
+  5. Cross-referenziare i profili social trovati
+  6. Presentare il report alle autorità competenti (Polizia Postale)
+
+═══════════════════════════════════════════════════════════════
+Fine indagine: $(date)
+Report generato da: Kali-AI v$VERSION — Automated Forensics
+Operatore: $AUTHOR
+Classificazione: RISERVATO
+═══════════════════════════════════════════════════════════════
+REPBODY
+
+    # Pulizia file temporanei
+    rm -f "$case_dir"/.agent*_done
+    
+    think_result "INDAGINE COMPLETATA — Report: $report_file"
+    
+    echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════╗${RESET}"
+    echo -e "${GREEN}║  🔎 INDAGINE COMPLETATA: $suspect_email${RESET}"
+    echo -e "${GREEN}║  📄 Report TXT: $report_file${RESET}"
+    echo -e "${GREEN}║  📁 Evidenze: $case_dir${RESET}"
+    echo -e "${GREEN}║  📋 Evidence Log: $evidence_log${RESET}"
+    echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════╝${RESET}"
 }
