@@ -1057,6 +1057,7 @@ $(ss -tlnp 2>/dev/null | head -15)
 - Comandi: $(cat "$USER_PROFILE" 2>/dev/null | jq '.total_commands//0') | Pentests: $(cat "$USER_PROFILE" 2>/dev/null | jq '.pentests_completed//0')
 REOF
     echo -e "${GREEN}📄 $rf${RESET}"
+    mousepad "$rf" 2>/dev/null &
 }
 
 # ═══════════════════════════════════════════════════════════════
@@ -1463,6 +1464,10 @@ REGOLE:
 14. Per web vulnerability usa SEMPRE autonomous_command "web_vuln" "URL"
 15. Per monitoraggio usa autonomous_command "monitor_add" "monitor_start" "monitor_stop" "monitor_status"
 16. NON generare comandi manuali quando esiste un autonomous_command dedicato
+17. Per domande normali, conversazione, consigli: rispondi SOLO con testo, SENZA blocchi bash
+18. Quando generi un report aprilo con: mousepad "$FILE" 2>/dev/null &
+19. Rispondi come un assistente chat quando non servono comandi di sistema
+20. Per report sistema usa SEMPRE autonomous_command "report" — NON generare comandi echo manuali
 
 PERCORSI: Desktop=~/Desktop | Pentest=$PENTEST_DIR
 MEMORIA: $mem"
