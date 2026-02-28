@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # ╔═══════════════════════════════════════════════════════════════╗
-# ║  🤖 KALI-AI v12.0 - COGNITIVE PENTEST FRAMEWORK                ║
+# ║  🤖 KALI-AI v14.0 - COGNITIVE PENTEST FRAMEWORK                ║
 # ║  Creato da Antonio Telesca                                    ║
 # ║  GitHub: https://github.com/TelescaAntonio/kali-ai            ║
 # ║  Powered by Claude Opus 4.6 (Anthropic)                      ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
 AUTHOR="Antonio Telesca"
-VERSION="12.0"
+VERSION="14.0"
 GITHUB_REPO="https://github.com/TelescaAntonio/kali-ai"
 EMAIL="antonio.telesca@irst-institute.eu"
 
@@ -1389,7 +1389,7 @@ process_conversation() {
     think_thought "Analizzo richiesta utente..."
     think_observe "Stato sistema: RAM=$(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}')"
     
-    local context="Sei KALI-AI v12.0, un COGNITIVE PENTEST FRAMEWORK per Kali Linux creato da Antonio Telesca.
+    local context="Sei KALI-AI v14.0, un COGNITIVE PENTEST FRAMEWORK per Kali Linux creato da Antonio Telesca.
 Powered by Claude Opus 4.6. HAI IL CONTROLLO COMPLETO DEL SISTEMA.
 
 STATO: $snap
@@ -1482,7 +1482,7 @@ handle_special_commands() {
         "clear"|"c") clear; return 0 ;;
         "help"|"h"|"aiuto")
             echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════╗${RESET}"
-            echo -e "${CYAN}║  🤖 KALI-AI v12.0 — COGNITIVE PENTEST FRAMEWORK                ║${RESET}"
+            echo -e "${CYAN}║  🤖 KALI-AI v14.0 — COGNITIVE PENTEST FRAMEWORK                ║${RESET}"
             echo -e "${CYAN}╠═══════════════════════════════════════════════════════════════╣${RESET}"
             echo -e "${CYAN}║${RESET}  🗣️  Parla naturalmente!                                     ${CYAN}║${RESET}"
             echo -e "${CYAN}║${RESET}                                                              ${CYAN}║${RESET}"
@@ -1536,7 +1536,7 @@ main() {
     clear
     echo -e "${RED}"
     echo "╔═══════════════════════════════════════════════════════════════╗"
-    echo "║  🤖 KALI-AI v12.0 — COGNITIVE PENTEST FRAMEWORK                ║"
+    echo "║  🤖 KALI-AI v14.0 — COGNITIVE PENTEST FRAMEWORK                ║"
     echo "║        Powered by Claude Opus 4.6 (Anthropic)                 ║"
     echo "║           Reasoning Engine + Multi-Agent System               ║"
     echo "║              Creato da Antonio Telesca                        ║"
@@ -1555,7 +1555,7 @@ main() {
     start_thought_terminal
     sleep 1
     
-    think_phase "KALI-AI v12.0 INIZIALIZZATO"
+    think_phase "KALI-AI v14.0 INIZIALIZZATO"
     think_thought "Sistema operativo: $(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d'\"' -f2)"
     think_thought "Modello AI: $MODEL"
     think_thought "RAM: $(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}')"
@@ -6250,4 +6250,705 @@ THREATREPORT
     echo -e "${threat_color}╚════════════════════════════════════════════════════╝${RESET}"
     echo ""
     echo -e "${GREEN}📄 Report completo: $report_file${RESET}"
+}
+
+# ╔═══════════════════════════════════════════════════════════════════╗
+# ║  FASE 29: FORENSIC REPORT GENERATOR — LAW ENFORCEMENT FORMAT    ║
+# ║  Polizia Postale / Europol / CERT-IT compatible                  ║
+# ╚═══════════════════════════════════════════════════════════════════╝
+
+FORENSIC_REPORTS_DIR="$BASE_DIR/forensic_reports"
+EVIDENCE_COUNTER_FILE="$BASE_DIR/.evidence_counter"
+
+init_forensic_reports() {
+    mkdir -p "$FORENSIC_REPORTS_DIR"/{evidence,chain_of_custody,attachments}
+    if [[ ! -f "$EVIDENCE_COUNTER_FILE" ]]; then
+        echo "0" > "$EVIDENCE_COUNTER_FILE"
+    fi
+}
+
+get_next_evidence_id() {
+    local counter=$(cat "$EVIDENCE_COUNTER_FILE" 2>/dev/null || echo 0)
+    counter=$((counter + 1))
+    echo "$counter" > "$EVIDENCE_COUNTER_FILE"
+    printf "EV-%04d" "$counter"
+}
+
+hash_evidence() {
+    local file="$1"
+    local evidence_id="$2"
+    local chain_file="$3"
+
+    if [[ ! -f "$file" ]]; then
+        return 1
+    fi
+
+    local sha256=$(sha256sum "$file" 2>/dev/null | awk '{print $1}')
+    local md5=$(md5sum "$file" 2>/dev/null | awk '{print $1}')
+    local filesize=$(stat -c%s "$file" 2>/dev/null || echo "N/A")
+    local timestamp=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+
+    cat >> "$chain_file" << CHAINENTRY
+### $evidence_id
+| Campo | Valore |
+|-------|--------|
+| **File** | \`$(basename "$file")\` |
+| **Percorso originale** | \`$file\` |
+| **SHA-256** | \`$sha256\` |
+| **MD5** | \`$md5\` |
+| **Dimensione** | $filesize bytes |
+| **Timestamp raccolta** | $timestamp |
+| **Raccolta da** | Kali-AI v$VERSION (automatico) |
+| **Integrità** | ✅ Hash calcolato al momento della raccolta |
+
+CHAINENTRY
+
+    echo "$evidence_id|$file|$sha256|$md5|$filesize|$timestamp" >> "${chain_file%.md}.csv"
+    echo "$sha256"
+}
+
+collect_evidence_from_dir() {
+    local source_dir="$1"
+    local evidence_dir="$2"
+    local chain_file="$3"
+    local collected=0
+
+    if [[ ! -d "$source_dir" ]]; then
+        return 0
+    fi
+
+    for file in "$source_dir"/*; do
+        [[ -f "$file" ]] || continue
+        local ev_id=$(get_next_evidence_id)
+        local dest="$evidence_dir/${ev_id}_$(basename "$file")"
+        cp "$file" "$dest" 2>/dev/null
+        hash_evidence "$dest" "$ev_id" "$chain_file"
+        collected=$((collected + 1))
+    done
+
+    echo "$collected"
+}
+
+generate_forensic_report() {
+    local case_name="$1"
+    local case_description="${2:-Indagine digitale}"
+    local investigator="${3:-Antonio Telesca}"
+    local source_dirs="${4:-}"
+
+    think_phase "FORENSIC REPORT GENERATOR — LAW ENFORCEMENT"
+
+    init_forensic_reports
+
+    local case_id="CASE_$(date +%Y%m%d_%H%M%S)_$(echo "$case_name" | tr ' ' '_' | tr '[:upper:]' '[:lower:]')"
+    local case_dir="$FORENSIC_REPORTS_DIR/$case_id"
+    mkdir -p "$case_dir"/{evidence,chain_of_custody,attachments,hashes}
+
+    local report_file="$case_dir/RAPPORTO_FORENSE_${case_id}.md"
+    local chain_file="$case_dir/chain_of_custody/catena_custodia.md"
+    local summary_file="$case_dir/chain_of_custody/catena_custodia.csv"
+
+    # Intestazione catena di custodia
+    cat > "$chain_file" << CHAINHEADER
+# CATENA DI CUSTODIA DIGITALE
+## Caso: $case_id
+
+| Campo | Valore |
+|-------|--------|
+| **Caso** | $case_id |
+| **Investigatore** | $investigator |
+| **Data inizio** | $(date -u '+%Y-%m-%dT%H:%M:%SZ') |
+| **Tool** | Kali-AI v$VERSION |
+| **Metodo hash** | SHA-256 + MD5 (doppia verifica) |
+
+> Ogni evidenza è stata raccolta automaticamente da Kali-AI.
+> Gli hash sono stati calcolati al momento della raccolta per garantire l'integrità.
+
+---
+
+CHAINHEADER
+
+    echo "evidence_id|file|sha256|md5|size_bytes|timestamp" > "$summary_file"
+
+    # Raccogli evidenze da tutte le directory di lavoro
+    think_observe "Raccolta evidenze in corso..."
+
+    local total_evidence=0
+
+    # Raccogli da directory specificate
+    if [[ -n "$source_dirs" ]]; then
+        for dir in $source_dirs; do
+            if [[ -d "$dir" ]]; then
+                local count=$(collect_evidence_from_dir "$dir" "$case_dir/evidence" "$chain_file")
+                total_evidence=$((total_evidence + count))
+                think_thought "Raccolte $count evidenze da $dir"
+            fi
+        done
+    fi
+
+    # Raccogli automaticamente da directory standard di Kali-AI
+    for std_dir in "$REPORTS_DIR" "$PENTEST_RESULTS_DIR" "$THREAT_INTEL_DIR" "$BASE_DIR/cni_cases"; do
+        if [[ -d "$std_dir" ]]; then
+            local latest=$(ls -td "$std_dir"/*/ 2>/dev/null | head -1)
+            if [[ -n "$latest" ]]; then
+                local count=$(collect_evidence_from_dir "$latest" "$case_dir/evidence" "$chain_file")
+                total_evidence=$((total_evidence + count))
+                think_thought "Raccolte $count evidenze da $latest"
+            fi
+        fi
+    done
+
+    # Hash del report stesso alla fine
+    local report_hash=""
+
+    # ── GENERA RAPPORTO FORENSE PRINCIPALE ────────
+    cat > "$report_file" << FORENSICHEADER
+# RAPPORTO DI ANALISI FORENSE DIGITALE
+## Protocollo di Indagine Tecnica
+
+---
+
+**CLASSIFICAZIONE: RISERVATO — SOLO PER USO INVESTIGATIVO**
+
+---
+
+| Campo | Valore |
+|-------|--------|
+| **N. Caso** | $case_id |
+| **Oggetto** | $case_name |
+| **Descrizione** | $case_description |
+| **Investigatore** | $investigator |
+| **Qualifica** | AI Systems Engineer / Cybersecurity Researcher |
+| **Email** | antonio.telesca@irst-institute.eu |
+| **ORCID** | 0009-0003-3048-1044 |
+| **Strumento** | Kali-AI v$VERSION — Cognitive Autonomous Pentest & OSINT Framework |
+| **Data rapporto** | $(date '+%d/%m/%Y alle ore %H:%M:%S %Z') |
+| **Evidenze raccolte** | $total_evidence |
+| **Metodo hash** | SHA-256 + MD5 |
+
+---
+
+## 1. QUADRO NORMATIVO DI RIFERIMENTO
+
+La presente analisi è stata condotta nel rispetto del seguente quadro normativo:
+
+**Normativa Europea:**
+- **Regolamento (UE) 2016/679 (GDPR)** — Protezione dei dati personali; il trattamento dei dati nell'ambito della presente analisi è effettuato per finalità di prevenzione e repressione di reati informatici (Art. 6, comma 1, lett. e).
+- **Direttiva (UE) 2022/2555 (NIS2)** — Misure per un livello comune elevato di cibersicurezza nell'Unione.
+- **Convenzione di Budapest sul Cybercrime (2001)** — Convenzione del Consiglio d'Europa sulla criminalità informatica, ratificata dall'Italia con L. 48/2008.
+- **Regolamento (UE) 2023/1543** — Ordini europei di produzione e conservazione di prove elettroniche (e-Evidence).
+
+**Normativa Italiana:**
+- **Codice Penale, Titolo VII-bis** — Delitti informatici (artt. 615-ter, 615-quater, 615-quinquies, 617-quater, 617-quinquies, 617-sexies, 635-bis, 635-ter, 635-quater, 635-quinquies, 640-ter).
+- **Codice di Procedura Penale, Art. 244-245, 247, 352, 354** — Ispezioni, perquisizioni, sequestri informatici, accertamenti urgenti.
+- **Legge 48/2008** — Ratifica Convenzione di Budapest; modifica CPP per perquisizioni e sequestri di sistemi informatici.
+- **D.Lgs. 196/2003 (Codice Privacy)** come modificato dal D.Lgs. 101/2018.
+
+---
+
+## 2. METODOLOGIA
+
+L'analisi è stata condotta utilizzando il framework Kali-AI v$VERSION con la seguente metodologia:
+
+**Fase 1 — Identificazione:** individuazione delle fonti di evidenza digitale e degli indicatori di compromissione (IoC).
+
+**Fase 2 — Raccolta:** acquisizione automatizzata delle evidenze con calcolo immediato degli hash SHA-256 e MD5 per ogni file raccolto, a garanzia della catena di custodia digitale.
+
+**Fase 3 — Analisi:** elaborazione delle evidenze mediante i seguenti moduli:
+- OSINT Intelligence Engine (email, telefono, social, WHOIS, DNS)
+- Threat Intelligence Aggregator (AbuseIPDB, VirusTotal, AlienVault OTX, Shodan)
+- Criminal Network Intelligence (analisi grafo relazionale)
+- Crypto Forensics Engine (tracciamento blockchain)
+- MITRE ATT&CK Mapping (classificazione tattiche e tecniche)
+- CVE Lookup Engine (identificazione vulnerabilità note)
+
+**Fase 4 — Documentazione:** generazione automatica del presente rapporto con catena di custodia, hash di integrità e riferimenti normativi.
+
+**Standard di riferimento:**
+- ISO/IEC 27037:2012 — Guidelines for identification, collection, acquisition and preservation of digital evidence
+- ISO/IEC 27042:2015 — Guidelines for the analysis and interpretation of digital evidence
+- NIST SP 800-86 — Guide to Integrating Forensic Techniques into Incident Response
+
+---
+
+## 3. DESCRIZIONE DEL CASO
+
+$case_description
+
+---
+
+## 4. EVIDENZE RACCOLTE
+
+Totale evidenze: **$total_evidence**
+
+Ogni evidenza è identificata da un codice univoco (EV-XXXX) ed è accompagnata dal relativo hash SHA-256 e MD5 calcolato al momento della raccolta.
+
+La catena di custodia completa è disponibile nell'allegato: \`chain_of_custody/catena_custodia.md\`
+
+### Riepilogo evidenze:
+\`\`\`
+$(cat "$summary_file" 2>/dev/null | column -t -s'|' | head -30)
+\`\`\`
+
+---
+
+## 5. RISULTATI DELL'ANALISI
+
+### 5.1 Threat Intelligence
+$(if [[ -d "$THREAT_INTEL_DIR" ]]; then
+    local latest_threat=$(ls -td "$THREAT_INTEL_DIR"/THREAT_* 2>/dev/null | head -1)
+    if [[ -n "$latest_threat" && -f "$latest_threat/combined/threat_intel_report.md" ]]; then
+        echo "Ultimo report disponibile: \`$latest_threat\`"
+        grep -A5 "THREAT SCORE" "$latest_threat/combined/threat_intel_report.md" 2>/dev/null
+    else
+        echo "Nessuna analisi threat intelligence disponibile per questo caso."
+    fi
+else
+    echo "Modulo Threat Intelligence non ancora eseguito."
+fi)
+
+### 5.2 OSINT
+$(if [[ -d "$REPORTS_DIR" ]]; then
+    local latest_osint=$(ls -t "$REPORTS_DIR"/osint_* 2>/dev/null | head -1)
+    if [[ -n "$latest_osint" ]]; then
+        echo "Report OSINT: \`$latest_osint\`"
+        head -30 "$latest_osint" 2>/dev/null
+    else
+        echo "Nessun report OSINT disponibile."
+    fi
+else
+    echo "Nessun report OSINT disponibile."
+fi)
+
+### 5.3 Network Intelligence
+$(if [[ -d "$BASE_DIR/cni_cases" ]]; then
+    local latest_cni=$(ls -td "$BASE_DIR/cni_cases"/CNI_* 2>/dev/null | head -1)
+    if [[ -n "$latest_cni" ]]; then
+        echo "Ultima indagine CNI: \`$latest_cni\`"
+        [[ -f "$latest_cni/reports/final_report.md" ]] && head -20 "$latest_cni/reports/final_report.md" 2>/dev/null
+    else
+        echo "Nessuna indagine CNI disponibile."
+    fi
+else
+    echo "Modulo CNI non ancora eseguito."
+fi)
+
+### 5.4 Crypto Forensics
+$(if [[ -d "$BASE_DIR/crypto_forensics" ]]; then
+    local latest_crypto=$(ls -td "$BASE_DIR/crypto_forensics"/* 2>/dev/null | head -1)
+    if [[ -n "$latest_crypto" ]]; then
+        echo "Ultima analisi crypto: \`$latest_crypto\`"
+    else
+        echo "Nessuna analisi crypto disponibile."
+    fi
+else
+    echo "Modulo Crypto Forensics non ancora eseguito."
+fi)
+
+---
+
+## 6. CONCLUSIONI E RACCOMANDAZIONI
+
+Le evidenze raccolte e analizzate sono documentate nella catena di custodia allegata. Tutti gli hash di integrità sono stati calcolati al momento della raccolta e possono essere verificati indipendentemente.
+
+### Raccomandazioni operative:
+1. Conservare tutte le evidenze digitali nella directory del caso
+2. Verificare gli hash prima di qualsiasi utilizzo processuale
+3. Integrare con eventuali analisi forensi tradizionali (acquisizione disco, RAM dump)
+4. Procedere con le richieste alle autorità competenti sulla base degli IoC identificati
+
+---
+
+## 7. DICHIARAZIONE DELL'INVESTIGATORE
+
+Il sottoscritto **$investigator** dichiara che:
+- L'analisi è stata condotta con strumenti validati e metodologie conformi agli standard ISO/IEC 27037 e 27042
+- Le evidenze sono state raccolte preservando la catena di custodia digitale
+- Gli hash di integrità garantiscono che le evidenze non sono state alterate dopo la raccolta
+- Il presente rapporto è redatto in scienza e coscienza
+
+**Data:** $(date '+%d/%m/%Y')
+**Luogo:** _______________
+**Firma:** _______________
+
+---
+
+## ALLEGATI
+
+| # | Allegato | Percorso |
+|---|----------|----------|
+| A | Catena di custodia | \`chain_of_custody/catena_custodia.md\` |
+| B | Catena di custodia (CSV) | \`chain_of_custody/catena_custodia.csv\` |
+| C | Directory evidenze | \`evidence/\` |
+| D | Allegati supplementari | \`attachments/\` |
+
+---
+
+*Rapporto generato automaticamente da Kali-AI v$VERSION*
+*Framework: Cognitive Autonomous Pentest & OSINT*
+*Autore: Antonio Telesca — antonio.telesca@irst-institute.eu*
+*ORCID: 0009-0003-3048-1044*
+*GitHub: https://github.com/TelescaAntonio/kali-ai*
+FORENSICHEADER
+
+    # Hash del report stesso
+    report_hash=$(sha256sum "$report_file" 2>/dev/null | awk '{print $1}')
+    echo "" >> "$report_file"
+    echo "**Hash SHA-256 del presente rapporto:** \`$report_hash\`" >> "$report_file"
+
+    think_result "Rapporto forense generato: $total_evidence evidenze, caso $case_id"
+
+    echo ""
+    echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${RESET}"
+    echo -e "${GREEN}║  📋 RAPPORTO FORENSE GENERATO                             ║${RESET}"
+    echo -e "${GREEN}╠════════════════════════════════════════════════════════════╣${RESET}"
+    echo -e "${GREEN}║  Caso: $case_id${RESET}"
+    echo -e "${GREEN}║  Evidenze: $total_evidence${RESET}"
+    echo -e "${GREEN}║  Report: $report_file${RESET}"
+    echo -e "${GREEN}║  Catena custodia: $chain_file${RESET}"
+    echo -e "${GREEN}║  Hash report: ${report_hash:0:32}...${RESET}"
+    echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${RESET}"
+}
+
+# ╔═══════════════════════════════════════════════════════════════════╗
+# ║  FASE 30: REAL-TIME MONITORING DAEMON                            ║
+# ║  Sorveglianza continua wallet/domini/IP con alerting             ║
+# ╚═══════════════════════════════════════════════════════════════════╝
+
+MONITOR_DIR="$BASE_DIR/monitoring"
+MONITOR_CONFIG="$MONITOR_DIR/watchlist.json"
+MONITOR_LOG="$MONITOR_DIR/monitor.log"
+MONITOR_ALERTS="$MONITOR_DIR/alerts.json"
+MONITOR_PID_FILE="$MONITOR_DIR/.monitor.pid"
+
+init_monitoring() {
+    mkdir -p "$MONITOR_DIR"/{snapshots,alerts,logs}
+    if [[ ! -f "$MONITOR_CONFIG" ]]; then
+        cat > "$MONITOR_CONFIG" << 'WATCHCONF'
+{
+    "targets": [],
+    "check_interval_seconds": 300,
+    "alert_methods": ["file", "terminal"],
+    "active": false
+}
+WATCHCONF
+    fi
+    if [[ ! -f "$MONITOR_ALERTS" ]]; then
+        echo '{"alerts":[]}' > "$MONITOR_ALERTS"
+    fi
+}
+
+monitor_add_target() {
+    local indicator="$1"
+    local target_type="$2"
+    local description="${3:-Monitoraggio automatico}"
+
+    init_monitoring
+
+    local ind_type="$target_type"
+    if [[ -z "$ind_type" ]]; then
+        if [[ "$indicator" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            ind_type="ip"
+        elif [[ "$indicator" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
+            ind_type="eth_wallet"
+        elif [[ "$indicator" =~ ^(1|3|bc1) ]]; then
+            ind_type="btc_wallet"
+        elif [[ "$indicator" =~ \. ]]; then
+            ind_type="domain"
+        else
+            ind_type="unknown"
+        fi
+    fi
+
+    local entry=$(jq -cn \
+        --arg i "$indicator" \
+        --arg t "$ind_type" \
+        --arg d "$description" \
+        --arg added "$(date -u -Iseconds)" \
+        '{indicator:$i, type:$t, description:$d, added:$added, last_check:null, alert_count:0, status:"active"}')
+
+    local config=$(cat "$MONITOR_CONFIG")
+    echo "$config" | jq --argjson e "$entry" '.targets += [$e]' > "$MONITOR_CONFIG"
+
+    think_result "Monitoraggio aggiunto: $indicator ($ind_type)"
+    echo -e "${GREEN}✅ $indicator aggiunto alla watchlist ($ind_type)${RESET}"
+}
+
+monitor_check_ip() {
+    local ip="$1"
+    local snapshot_dir="$2"
+
+    # Check AbuseIPDB
+    local api_key=$(get_api_key "abuseipdb" 2>/dev/null)
+    if [[ -n "$api_key" ]]; then
+        curl -sG "https://api.abuseipdb.com/api/v2/check" \
+            -d "ipAddress=$ip" -d "maxAgeInDays=7" \
+            -H "Key: $api_key" -H "Accept: application/json" \
+            -o "$snapshot_dir/abuseipdb_${ip}.json" 2>/dev/null
+    fi
+
+    # Check porta aperte con netcat rapido
+    local open_ports=""
+    for port in 22 80 443 8080 3389 445; do
+        timeout 2 bash -c "echo >/dev/tcp/$ip/$port" 2>/dev/null && open_ports="$open_ports $port"
+    done
+
+    local abuse_score=$(jq -r '.data.abuseConfidenceScore // 0' "$snapshot_dir/abuseipdb_${ip}.json" 2>/dev/null)
+    local new_reports=$(jq -r '.data.totalReports // 0' "$snapshot_dir/abuseipdb_${ip}.json" 2>/dev/null)
+
+    echo "${abuse_score}|${new_reports}|${open_ports}"
+}
+
+monitor_check_domain() {
+    local domain="$1"
+    local snapshot_dir="$2"
+
+    # DNS resolution
+    local current_ip=$(dig +short "$domain" 2>/dev/null | grep -oP '^\d+\.\d+\.\d+\.\d+$' | head -1)
+    local prev_ip=""
+    [[ -f "$snapshot_dir/prev_ip_${domain}.txt" ]] && prev_ip=$(cat "$snapshot_dir/prev_ip_${domain}.txt" 2>/dev/null)
+    echo "$current_ip" > "$snapshot_dir/prev_ip_${domain}.txt"
+
+    # HTTP status
+    local http_status=$(curl -sL -o /dev/null -w "%{http_code}" "http://$domain" --max-time 10 2>/dev/null)
+    local https_status=$(curl -sL -o /dev/null -w "%{http_code}" "https://$domain" --max-time 10 2>/dev/null)
+
+    # SSL cert expiry
+    local ssl_expiry=$(echo | timeout 5 openssl s_client -connect "$domain:443" -servername "$domain" 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+
+    # WHOIS change detection
+    whois "$domain" 2>/dev/null | grep -iE "updated|changed|modified" | head -3 > "$snapshot_dir/whois_changes_${domain}.txt"
+
+    local ip_changed="no"
+    if [[ -n "$prev_ip" && "$prev_ip" != "$current_ip" ]]; then
+        ip_changed="yes"
+    fi
+
+    echo "${current_ip}|${ip_changed}|${http_status}|${https_status}|${ssl_expiry}"
+}
+
+monitor_check_eth_wallet() {
+    local wallet="$1"
+    local snapshot_dir="$2"
+
+    # Balance e transazioni recenti
+    local data=$(curl -s "https://api.etherscan.io/api?module=account&action=balance&address=$wallet&tag=latest" 2>/dev/null)
+    local balance_wei=$(echo "$data" | jq -r '.result // "0"' 2>/dev/null)
+    local balance_eth=$(echo "scale=6; $balance_wei / 1000000000000000000" | bc 2>/dev/null || echo "0")
+
+    # Ultime transazioni
+    local txs=$(curl -s "https://api.etherscan.io/api?module=account&action=txlist&address=$wallet&startblock=0&endblock=99999999&page=1&offset=5&sort=desc" 2>/dev/null)
+    echo "$txs" > "$snapshot_dir/eth_txs_${wallet:0:10}.json"
+
+    local tx_count=$(echo "$txs" | jq -r '.result | length' 2>/dev/null)
+    local latest_tx_time=$(echo "$txs" | jq -r '.result[0].timeStamp // "0"' 2>/dev/null)
+
+    # Confronta con snapshot precedente
+    local prev_balance="0"
+    [[ -f "$snapshot_dir/prev_balance_${wallet:0:10}.txt" ]] && prev_balance=$(cat "$snapshot_dir/prev_balance_${wallet:0:10}.txt" 2>/dev/null)
+    echo "$balance_eth" > "$snapshot_dir/prev_balance_${wallet:0:10}.txt"
+
+    local balance_changed="no"
+    if [[ "$prev_balance" != "$balance_eth" ]]; then
+        balance_changed="yes"
+    fi
+
+    echo "${balance_eth}|${balance_changed}|${tx_count}|${latest_tx_time}"
+}
+
+monitor_check_btc_wallet() {
+    local wallet="$1"
+    local snapshot_dir="$2"
+
+    local data=$(curl -s "https://blockchain.info/rawaddr/$wallet?limit=5" 2>/dev/null)
+    echo "$data" > "$snapshot_dir/btc_data_${wallet:0:10}.json"
+
+    local balance_sat=$(echo "$data" | jq -r '.final_balance // 0' 2>/dev/null)
+    local balance_btc=$(echo "scale=8; $balance_sat / 100000000" | bc 2>/dev/null || echo "0")
+    local tx_count=$(echo "$data" | jq -r '.n_tx // 0' 2>/dev/null)
+    local latest_tx=$(echo "$data" | jq -r '.txs[0].time // 0' 2>/dev/null)
+
+    local prev_balance="0"
+    [[ -f "$snapshot_dir/prev_btc_balance_${wallet:0:10}.txt" ]] && prev_balance=$(cat "$snapshot_dir/prev_btc_balance_${wallet:0:10}.txt" 2>/dev/null)
+    echo "$balance_btc" > "$snapshot_dir/prev_btc_balance_${wallet:0:10}.txt"
+
+    local balance_changed="no"
+    if [[ "$prev_balance" != "$balance_btc" ]]; then
+        balance_changed="yes"
+    fi
+
+    echo "${balance_btc}|${balance_changed}|${tx_count}|${latest_tx}"
+}
+
+fire_alert() {
+    local target="$1"
+    local alert_type="$2"
+    local message="$3"
+    local severity="$4"
+
+    local timestamp=$(date -u -Iseconds)
+    local alert_id="ALERT_$(date +%s)_$$"
+
+    # Salva in JSON
+    local alert_entry=$(jq -cn \
+        --arg id "$alert_id" \
+        --arg t "$target" \
+        --arg type "$alert_type" \
+        --arg msg "$message" \
+        --arg sev "$severity" \
+        --arg ts "$timestamp" \
+        '{id:$id, target:$t, type:$type, message:$msg, severity:$sev, timestamp:$ts}')
+
+    local alerts=$(cat "$MONITOR_ALERTS")
+    echo "$alerts" | jq --argjson a "$alert_entry" '.alerts += [$a]' > "$MONITOR_ALERTS"
+
+    # Log
+    echo "[$timestamp] [$severity] $target: $message" >> "$MONITOR_LOG"
+
+    # Alert a terminale
+    local color="$YELLOW"
+    [[ "$severity" == "CRITICAL" ]] && color="$RED"
+    [[ "$severity" == "HIGH" ]] && color="$RED"
+
+    echo ""
+    echo -e "${color}╔═══════════════════════════════════════════════════════════╗${RESET}"
+    echo -e "${color}║  🚨 ALERT: $severity${RESET}"
+    echo -e "${color}║  Target: $target${RESET}"
+    echo -e "${color}║  Tipo: $alert_type${RESET}"
+    echo -e "${color}║  $message${RESET}"
+    echo -e "${color}║  Timestamp: $timestamp${RESET}"
+    echo -e "${color}╚═══════════════════════════════════════════════════════════╝${RESET}"
+    echo ""
+}
+
+monitor_run_cycle() {
+    local snapshot_dir="$MONITOR_DIR/snapshots/$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$snapshot_dir"
+
+    local targets=$(jq -r '.targets[] | select(.status == "active") | "\(.indicator)|\(.type)"' "$MONITOR_CONFIG" 2>/dev/null)
+
+    while IFS='|' read -r indicator ind_type; do
+        [[ -z "$indicator" ]] && continue
+
+        case "$ind_type" in
+            ip)
+                local result=$(monitor_check_ip "$indicator" "$snapshot_dir")
+                IFS='|' read -r abuse_score reports open_ports <<< "$result"
+                if [[ $abuse_score -gt 50 ]]; then
+                    fire_alert "$indicator" "IP_HIGH_ABUSE" "Abuse score salito a ${abuse_score}%, $reports report" "HIGH"
+                fi
+                if [[ -n "$open_ports" ]]; then
+                    fire_alert "$indicator" "IP_PORTS_OPEN" "Porte aperte rilevate:$open_ports" "MEDIUM"
+                fi
+                ;;
+            domain)
+                local result=$(monitor_check_domain "$indicator" "$snapshot_dir")
+                IFS='|' read -r current_ip ip_changed http_status https_status ssl_expiry <<< "$result"
+                if [[ "$ip_changed" == "yes" ]]; then
+                    fire_alert "$indicator" "DOMAIN_IP_CHANGED" "IP cambiato a $current_ip" "HIGH"
+                fi
+                if [[ "$http_status" != "200" && "$http_status" != "301" && "$http_status" != "302" ]]; then
+                    fire_alert "$indicator" "DOMAIN_HTTP_ERROR" "HTTP status: $http_status" "MEDIUM"
+                fi
+                ;;
+            eth_wallet)
+                local result=$(monitor_check_eth_wallet "$indicator" "$snapshot_dir")
+                IFS='|' read -r balance changed tx_count latest_tx <<< "$result"
+                if [[ "$changed" == "yes" ]]; then
+                    fire_alert "$indicator" "WALLET_BALANCE_CHANGED" "Nuovo saldo ETH: $balance (transazione rilevata)" "CRITICAL"
+                fi
+                ;;
+            btc_wallet)
+                local result=$(monitor_check_btc_wallet "$indicator" "$snapshot_dir")
+                IFS='|' read -r balance changed tx_count latest_tx <<< "$result"
+                if [[ "$changed" == "yes" ]]; then
+                    fire_alert "$indicator" "WALLET_BALANCE_CHANGED" "Nuovo saldo BTC: $balance (transazione rilevata)" "CRITICAL"
+                fi
+                ;;
+        esac
+
+    done <<< "$targets"
+}
+
+monitor_start() {
+    local interval="${1:-300}"
+
+    init_monitoring
+
+    if [[ -f "$MONITOR_PID_FILE" ]]; then
+        local old_pid=$(cat "$MONITOR_PID_FILE")
+        if kill -0 "$old_pid" 2>/dev/null; then
+            echo -e "${YELLOW}⚠️ Monitor già attivo (PID: $old_pid)${RESET}"
+            return 0
+        fi
+    fi
+
+    think_phase "REAL-TIME MONITORING DAEMON"
+    think_observe "Avvio daemon con intervallo ${interval}s"
+
+    local target_count=$(jq -r '.targets | length' "$MONITOR_CONFIG" 2>/dev/null)
+    echo -e "${CYAN}🔄 Avvio monitoraggio di $target_count target ogni ${interval}s...${RESET}"
+
+    # Daemon in background
+    (
+        while true; do
+            monitor_run_cycle
+            sleep "$interval"
+        done
+    ) &
+
+    local daemon_pid=$!
+    echo "$daemon_pid" > "$MONITOR_PID_FILE"
+
+    jq '.active = true' "$MONITOR_CONFIG" > "${MONITOR_CONFIG}.tmp" && mv "${MONITOR_CONFIG}.tmp" "$MONITOR_CONFIG"
+
+    echo -e "${GREEN}✅ Monitor avviato (PID: $daemon_pid, intervallo: ${interval}s)${RESET}"
+    echo -e "${GREEN}📄 Log: $MONITOR_LOG${RESET}"
+    echo -e "${GREEN}🚨 Alerts: $MONITOR_ALERTS${RESET}"
+}
+
+monitor_stop() {
+    if [[ -f "$MONITOR_PID_FILE" ]]; then
+        local pid=$(cat "$MONITOR_PID_FILE")
+        if kill -0 "$pid" 2>/dev/null; then
+            kill "$pid" 2>/dev/null
+            rm -f "$MONITOR_PID_FILE"
+            jq '.active = false' "$MONITOR_CONFIG" > "${MONITOR_CONFIG}.tmp" && mv "${MONITOR_CONFIG}.tmp" "$MONITOR_CONFIG"
+            echo -e "${GREEN}✅ Monitor fermato (PID: $pid)${RESET}"
+        else
+            rm -f "$MONITOR_PID_FILE"
+            echo -e "${YELLOW}⚠️ Monitor non era attivo${RESET}"
+        fi
+    else
+        echo -e "${YELLOW}⚠️ Nessun monitor attivo${RESET}"
+    fi
+}
+
+monitor_status() {
+    init_monitoring
+
+    local active="NO"
+    local pid="N/A"
+    if [[ -f "$MONITOR_PID_FILE" ]]; then
+        pid=$(cat "$MONITOR_PID_FILE")
+        kill -0 "$pid" 2>/dev/null && active="SI"
+    fi
+
+    local target_count=$(jq -r '.targets | length' "$MONITOR_CONFIG" 2>/dev/null)
+    local alert_count=$(jq -r '.alerts | length' "$MONITOR_ALERTS" 2>/dev/null)
+    local last_alert=$(jq -r '.alerts[-1].timestamp // "nessuno"' "$MONITOR_ALERTS" 2>/dev/null)
+
+    echo ""
+    echo -e "${CYAN}╔════════════════════════════════════════════════════╗${RESET}"
+    echo -e "${CYAN}║  📡 MONITOR STATUS                                 ║${RESET}"
+    echo -e "${CYAN}╠════════════════════════════════════════════════════╣${RESET}"
+    echo -e "${CYAN}║  Attivo: $active (PID: $pid)${RESET}"
+    echo -e "${CYAN}║  Target monitorati: $target_count${RESET}"
+    echo -e "${CYAN}║  Alerts totali: $alert_count${RESET}"
+    echo -e "${CYAN}║  Ultimo alert: $last_alert${RESET}"
+    echo -e "${CYAN}╚════════════════════════════════════════════════════╝${RESET}"
+
+    # Lista target
+    echo ""
+    echo -e "${CYAN}Target attivi:${RESET}"
+    jq -r '.targets[] | "  [\(.type)] \(.indicator) — \(.description) (alerts: \(.alert_count))"' "$MONITOR_CONFIG" 2>/dev/null
 }
