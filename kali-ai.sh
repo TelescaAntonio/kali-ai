@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # ╔═══════════════════════════════════════════════════════════════╗
-# ║  🤖 KALI-AI v8.0 - COGNITIVE PENTEST FRAMEWORK                ║
+# ║  🤖 KALI-AI v9.0 - COGNITIVE PENTEST FRAMEWORK                ║
 # ║  Creato da Antonio Telesca                                    ║
 # ║  GitHub: https://github.com/TelescaAntonio/kali-ai            ║
 # ║  Powered by Claude Opus 4.6 (Anthropic)                      ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
 AUTHOR="Antonio Telesca"
-VERSION="8.0"
+VERSION="9.0"
 GITHUB_REPO="https://github.com/TelescaAntonio/kali-ai"
 EMAIL="antonio.telesca@irst-institute.eu"
 
@@ -1357,6 +1357,8 @@ autonomous_command() {
         "auto_tools") auto_select_tools "$1" "$2" ;;
         "tool_install") tool_ensure "$1" ;;
         "tool_update") tool_update "$1" ;;
+        "osint") osint_full_scan "$1" ;;
+        "web_vuln") website_vuln_scan "$1" ;;
         "export_thesis") export_thesis ;;
         *) echo -e "${YELLOW}⚠️ $action non riconosciuto${RESET}" ;;
     esac
@@ -1386,7 +1388,7 @@ process_conversation() {
     think_thought "Analizzo richiesta utente..."
     think_observe "Stato sistema: RAM=$(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}')"
     
-    local context="Sei KALI-AI v8.0, un COGNITIVE PENTEST FRAMEWORK per Kali Linux creato da Antonio Telesca.
+    local context="Sei KALI-AI v9.0, un COGNITIVE PENTEST FRAMEWORK per Kali Linux creato da Antonio Telesca.
 Powered by Claude Opus 4.6. HAI IL CONTROLLO COMPLETO DEL SISTEMA.
 
 STATO: $snap
@@ -1479,7 +1481,7 @@ handle_special_commands() {
         "clear"|"c") clear; return 0 ;;
         "help"|"h"|"aiuto")
             echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════╗${RESET}"
-            echo -e "${CYAN}║  🤖 KALI-AI v8.0 — COGNITIVE PENTEST FRAMEWORK                ║${RESET}"
+            echo -e "${CYAN}║  🤖 KALI-AI v9.0 — COGNITIVE PENTEST FRAMEWORK                ║${RESET}"
             echo -e "${CYAN}╠═══════════════════════════════════════════════════════════════╣${RESET}"
             echo -e "${CYAN}║${RESET}  🗣️  Parla naturalmente!                                     ${CYAN}║${RESET}"
             echo -e "${CYAN}║${RESET}                                                              ${CYAN}║${RESET}"
@@ -1533,7 +1535,7 @@ main() {
     clear
     echo -e "${RED}"
     echo "╔═══════════════════════════════════════════════════════════════╗"
-    echo "║  🤖 KALI-AI v8.0 — COGNITIVE PENTEST FRAMEWORK                ║"
+    echo "║  🤖 KALI-AI v9.0 — COGNITIVE PENTEST FRAMEWORK                ║"
     echo "║        Powered by Claude Opus 4.6 (Anthropic)                 ║"
     echo "║           Reasoning Engine + Multi-Agent System               ║"
     echo "║              Creato da Antonio Telesca                        ║"
@@ -1552,7 +1554,7 @@ main() {
     start_thought_terminal
     sleep 1
     
-    think_phase "KALI-AI v8.0 INIZIALIZZATO"
+    think_phase "KALI-AI v9.0 INIZIALIZZATO"
     think_thought "Sistema operativo: $(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d'\"' -f2)"
     think_thought "Modello AI: $MODEL"
     think_thought "RAM: $(free -h 2>/dev/null | awk '/Mem:/{print $3"/"$2}')"
@@ -3419,4 +3421,463 @@ MASTEREOF
     
     echo -e "${GREEN}🎯 Multi-Target Report: $master_report${RESET}"
     think_result "Master Report: $master_report"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# FASE 25: OSINT AUTOMATED INTELLIGENCE ENGINE
+# ═══════════════════════════════════════════════════════════════
+
+osint_full_scan() {
+    local target="$1"
+    local osint_dir="$REPORTS_DIR/osint_$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$osint_dir"/{emails,phones,social,dns,whois,tech,subdomains,wayback,leaks}
+    
+    think_phase "OSINT FULL SCAN: $target"
+    think_strategy "Lancio raccolta intelligence completa su $target..."
+    
+    tool_ensure_list curl jq whois dnsrecon theHarvester amass
+    
+    local report_file="$osint_dir/osint_master_report.md"
+    
+    cat > "$report_file" << OSINTHEAD
+# 🔍 OSINT Intelligence Report
+## Kali-AI v$VERSION — Automated OSINT Engine
+**Data:** $(date)
+**Target:** $target
+**Classificazione:** RISERVATO — Solo per uso autorizzato
+
+---
+
+OSINTHEAD
+
+    # ═══ 1. WHOIS ═══
+    think_agent "OSINT Agent 1: WHOIS Lookup"
+    local whois_data=$(whois "$target" 2>/dev/null)
+    echo "$whois_data" > "$osint_dir/whois/whois_raw.txt"
+    
+    local registrant=$(echo "$whois_data" | grep -i "registrant\|admin\|tech" | head -10)
+    local registrar=$(echo "$whois_data" | grep -i "registrar:" | head -1)
+    local creation=$(echo "$whois_data" | grep -i "creation\|created" | head -1)
+    local expiry=$(echo "$whois_data" | grep -i "expir" | head -1)
+    local nameservers=$(echo "$whois_data" | grep -i "name server\|nserver" | head -5)
+    
+    cat >> "$report_file" << WHOISEOF
+## 1. WHOIS Intelligence
+\`\`\`
+Registrar: $registrar
+Creazione: $creation
+Scadenza: $expiry
+Name Servers:
+$nameservers
+
+Contatti Registrant:
+$registrant
+\`\`\`
+
+WHOISEOF
+    think_observe "WHOIS completato: registrar, date, nameservers"
+
+    # ═══ 2. DNS ENUMERATION ═══
+    think_agent "OSINT Agent 2: DNS Enumeration"
+    
+    local dns_records=""
+    for rtype in A AAAA MX NS TXT SOA CNAME SRV; do
+        local result=$(dig +short "$target" "$rtype" 2>/dev/null)
+        if [[ -n "$result" ]]; then
+            dns_records="$dns_records\n$rtype: $result"
+            echo "$rtype: $result" >> "$osint_dir/dns/dns_records.txt"
+        fi
+    done
+    
+    # Reverse DNS
+    local ip=$(dig +short "$target" A 2>/dev/null | head -1)
+    local rdns=""
+    if [[ -n "$ip" ]]; then
+        rdns=$(dig +short -x "$ip" 2>/dev/null)
+        echo "Reverse DNS: $ip → $rdns" >> "$osint_dir/dns/reverse_dns.txt"
+    fi
+    
+    # MX records per email
+    local mx_records=$(dig +short "$target" MX 2>/dev/null)
+    echo "$mx_records" > "$osint_dir/dns/mx_records.txt"
+    
+    cat >> "$report_file" << DNSEOF
+## 2. DNS Intelligence
+**IP Principale:** $ip
+**Reverse DNS:** $rdns
+**MX Records (email):**
+\`\`\`
+$mx_records
+\`\`\`
+**Tutti i record DNS:**
+\`\`\`
+$(cat "$osint_dir/dns/dns_records.txt" 2>/dev/null)
+\`\`\`
+
+DNSEOF
+    think_observe "DNS: IP=$ip, MX trovati, $(wc -l < "$osint_dir/dns/dns_records.txt" 2>/dev/null || echo 0) record"
+
+    # ═══ 3. SUBDOMAIN ENUMERATION ═══
+    think_agent "OSINT Agent 3: Subdomain Discovery"
+    
+    # Metodo 1: crt.sh (Certificate Transparency)
+    local crtsh_subs=$(curl -s "https://crt.sh/?q=%25.$target&output=json" 2>/dev/null | \
+        jq -r '.[].name_value' 2>/dev/null | sort -u | grep -v "^\*" | head -50)
+    echo "$crtsh_subs" > "$osint_dir/subdomains/crtsh.txt"
+    
+    # Metodo 2: DNS brute force leggero
+    local common_subs="www mail ftp admin blog shop api dev staging test portal vpn remote cdn assets static media img images files docs help support forum wiki login register app mobile m"
+    for sub in $common_subs; do
+        local resolved=$(dig +short "$sub.$target" A 2>/dev/null)
+        if [[ -n "$resolved" ]]; then
+            echo "$sub.$target → $resolved" >> "$osint_dir/subdomains/bruteforce.txt"
+        fi
+    done
+    
+    local sub_count=$(cat "$osint_dir/subdomains/"*.txt 2>/dev/null | sort -u | grep -c "." || echo 0)
+    
+    cat >> "$report_file" << SUBEOF
+## 3. Subdomains ($sub_count trovati)
+**Da Certificate Transparency (crt.sh):**
+\`\`\`
+$(head -20 "$osint_dir/subdomains/crtsh.txt" 2>/dev/null)
+\`\`\`
+**Da DNS Brute Force:**
+\`\`\`
+$(cat "$osint_dir/subdomains/bruteforce.txt" 2>/dev/null)
+\`\`\`
+
+SUBEOF
+    think_observe "Subdomains: $sub_count trovati"
+
+    # ═══ 4. EMAIL HARVESTING ═══
+    think_agent "OSINT Agent 4: Email Harvesting"
+    
+    # Metodo 1: theHarvester
+    if command -v theHarvester &>/dev/null; then
+        theHarvester -d "$target" -b all -l 200 -f "$osint_dir/emails/harvester" 2>/dev/null
+    fi
+    
+    # Metodo 2: scraping pagine
+    local emails=""
+    for page in "" "/about" "/contact" "/team" "/impressum" "/privacy"; do
+        local page_content=$(curl -sL --max-time 10 "https://$target$page" 2>/dev/null)
+        local found_emails=$(echo "$page_content" | grep -oiE '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' | sort -u)
+        if [[ -n "$found_emails" ]]; then
+            echo "$found_emails" >> "$osint_dir/emails/scraped.txt"
+        fi
+        
+        # Estrai anche numeri di telefono
+        local phones=$(echo "$page_content" | grep -oP '[\+]?[(]?[0-9]{1,4}[)]?[-\s\./0-9]{7,15}' | sort -u)
+        if [[ -n "$phones" ]]; then
+            echo "$phones" >> "$osint_dir/phones/scraped.txt"
+        fi
+    done
+    
+    # Metodo 3: pattern comuni
+    for prefix in info contact admin support sales marketing hr jobs; do
+        echo "${prefix}@${target}" >> "$osint_dir/emails/guessed.txt"
+    done
+    
+    local email_count=$(cat "$osint_dir/emails/"*.txt 2>/dev/null | sort -u | grep -c "@" || echo 0)
+    local phone_count=$(cat "$osint_dir/phones/"*.txt 2>/dev/null | sort -u | grep -c "." || echo 0)
+    
+    cat >> "$report_file" << EMAILEOF
+## 4. Email Intelligence ($email_count trovate)
+**Email trovate:**
+\`\`\`
+$(cat "$osint_dir/emails/"*.txt 2>/dev/null | sort -u | head -30)
+\`\`\`
+
+## 5. Phone Intelligence ($phone_count trovati)
+**Numeri trovati:**
+\`\`\`
+$(cat "$osint_dir/phones/"*.txt 2>/dev/null | sort -u | head -20)
+\`\`\`
+
+EMAILEOF
+    think_observe "Email: $email_count | Telefoni: $phone_count"
+
+    # ═══ 5. TECHNOLOGY DETECTION ═══
+    think_agent "OSINT Agent 5: Technology Fingerprinting"
+    
+    local tech_report=""
+    local headers=$(curl -sI --max-time 10 "https://$target" 2>/dev/null)
+    echo "$headers" > "$osint_dir/tech/headers.txt"
+    
+    local server=$(echo "$headers" | grep -i "^server:" | head -1)
+    local powered=$(echo "$headers" | grep -i "^x-powered-by:" | head -1)
+    local cookies=$(echo "$headers" | grep -i "^set-cookie:" | head -5)
+    
+    # WhatWeb
+    if command -v whatweb &>/dev/null; then
+        whatweb -q "$target" > "$osint_dir/tech/whatweb.txt" 2>/dev/null
+    fi
+    
+    # Detect CMS
+    local cms="Sconosciuto"
+    local page_source=$(curl -sL --max-time 10 "https://$target" 2>/dev/null)
+    echo "$page_source" | grep -qi "wp-content\|wordpress" && cms="WordPress"
+    echo "$page_source" | grep -qi "joomla" && cms="Joomla"
+    echo "$page_source" | grep -qi "drupal" && cms="Drupal"
+    echo "$page_source" | grep -qi "shopify" && cms="Shopify"
+    echo "$page_source" | grep -qi "wix\.com" && cms="Wix"
+    echo "$page_source" | grep -qi "squarespace" && cms="Squarespace"
+    echo "$page_source" | grep -qi "magento" && cms="Magento"
+    echo "$page_source" | grep -qi "prestashop" && cms="PrestaShop"
+    
+    cat >> "$report_file" << TECHEOF
+## 6. Technology Stack
+**Server:** $server
+**Powered By:** $powered
+**CMS Rilevato:** $cms
+**Headers Completi:**
+\`\`\`
+$headers
+\`\`\`
+**WhatWeb:**
+\`\`\`
+$(cat "$osint_dir/tech/whatweb.txt" 2>/dev/null | head -10)
+\`\`\`
+
+TECHEOF
+    think_observe "Tech: $server | CMS: $cms"
+
+    # ═══ 6. SOCIAL MEDIA DISCOVERY ═══
+    think_agent "OSINT Agent 6: Social Media Discovery"
+    
+    local social_found=""
+    local social_platforms=(
+        "facebook.com/$target"
+        "twitter.com/$target"
+        "x.com/$target"
+        "instagram.com/$target"
+        "linkedin.com/company/$target"
+        "github.com/$target"
+        "youtube.com/@$target"
+        "tiktok.com/@$target"
+        "t.me/$target"
+        "reddit.com/r/$target"
+    )
+    
+    local domain_name=$(echo "$target" | sed 's/\..*//')
+    
+    for social_url in "${social_platforms[@]}"; do
+        local http_code=$(curl -sL -o /dev/null -w "%{http_code}" --max-time 5 "https://$social_url" 2>/dev/null)
+        if [[ "$http_code" == "200" || "$http_code" == "301" || "$http_code" == "302" ]]; then
+            echo "✅ https://$social_url (HTTP $http_code)" >> "$osint_dir/social/found.txt"
+            social_found="$social_found\n✅ https://$social_url"
+            think_observe "Social trovato: $social_url"
+        fi
+    done
+    
+    # Cerca anche con il nome senza TLD
+    for social_url in "facebook.com/$domain_name" "twitter.com/$domain_name" "instagram.com/$domain_name" "linkedin.com/company/$domain_name" "github.com/$domain_name"; do
+        local http_code=$(curl -sL -o /dev/null -w "%{http_code}" --max-time 5 "https://$social_url" 2>/dev/null)
+        if [[ "$http_code" == "200" || "$http_code" == "301" || "$http_code" == "302" ]]; then
+            echo "✅ https://$social_url (HTTP $http_code)" >> "$osint_dir/social/found.txt"
+        fi
+    done
+    
+    local social_count=$(cat "$osint_dir/social/found.txt" 2>/dev/null | grep -c "✅" || echo 0)
+    
+    cat >> "$report_file" << SOCIALEOF
+## 7. Social Media ($social_count profili trovati)
+\`\`\`
+$(cat "$osint_dir/social/found.txt" 2>/dev/null)
+\`\`\`
+
+SOCIALEOF
+
+    # ═══ 7. WAYBACK MACHINE ═══
+    think_agent "OSINT Agent 7: Wayback Machine History"
+    
+    local wayback=$(curl -s "https://web.archive.org/web/timemap/json?url=$target&limit=20" 2>/dev/null | \
+        jq -r '.[]? | "\(.[1]) - \(.[2])"' 2>/dev/null | tail -10)
+    echo "$wayback" > "$osint_dir/wayback/history.txt"
+    
+    cat >> "$report_file" << WAYEOF
+## 8. Wayback Machine History
+\`\`\`
+$(cat "$osint_dir/wayback/history.txt" 2>/dev/null | head -10)
+\`\`\`
+
+WAYEOF
+
+    # ═══ 8. SECURITY HEADERS CHECK ═══
+    think_agent "OSINT Agent 8: Security Headers Audit"
+    
+    local sec_score=0
+    local sec_max=7
+    local sec_findings=""
+    
+    echo "$headers" | grep -qi "strict-transport-security" && sec_score=$((sec_score+1)) || sec_findings="$sec_findings\n❌ HSTS mancante"
+    echo "$headers" | grep -qi "content-security-policy" && sec_score=$((sec_score+1)) || sec_findings="$sec_findings\n❌ CSP mancante"
+    echo "$headers" | grep -qi "x-frame-options" && sec_score=$((sec_score+1)) || sec_findings="$sec_findings\n❌ X-Frame-Options mancante"
+    echo "$headers" | grep -qi "x-content-type-options" && sec_score=$((sec_score+1)) || sec_findings="$sec_findings\n❌ X-Content-Type-Options mancante"
+    echo "$headers" | grep -qi "x-xss-protection" && sec_score=$((sec_score+1)) || sec_findings="$sec_findings\n❌ X-XSS-Protection mancante"
+    echo "$headers" | grep -qi "referrer-policy" && sec_score=$((sec_score+1)) || sec_findings="$sec_findings\n❌ Referrer-Policy mancante"
+    echo "$headers" | grep -qi "permissions-policy" && sec_score=$((sec_score+1)) || sec_findings="$sec_findings\n❌ Permissions-Policy mancante"
+    
+    cat >> "$report_file" << SECEOF
+## 9. Security Headers ($sec_score/$sec_max)
+$sec_findings
+
+SECEOF
+
+    # ═══ SOMMARIO FINALE ═══
+    cat >> "$report_file" << OSINTFOOT
+
+---
+
+## 📊 Sommario OSINT
+| Categoria | Risultati |
+|-----------|-----------|
+| Subdomains | $sub_count |
+| Email | $email_count |
+| Telefoni | $phone_count |
+| Social Media | $social_count |
+| Security Headers | $sec_score/$sec_max |
+| CMS | $cms |
+| IP | $ip |
+
+## 📁 File Generati
+- WHOIS: $osint_dir/whois/
+- DNS: $osint_dir/dns/
+- Subdomains: $osint_dir/subdomains/
+- Email: $osint_dir/emails/
+- Telefoni: $osint_dir/phones/
+- Social: $osint_dir/social/
+- Tech: $osint_dir/tech/
+- Wayback: $osint_dir/wayback/
+
+---
+*OSINT Report generato da Kali-AI v$VERSION — Automated OSINT Engine*
+*⚠️ Uso autorizzato — Legge 48/2008 (IT), GDPR Art.6*
+OSINTFOOT
+
+    think_result "OSINT completato: $sub_count subdomains, $email_count email, $phone_count telefoni, $social_count social"
+    echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════╗${RESET}"
+    echo -e "${GREEN}║  🔍 OSINT COMPLETATO: $target${RESET}"
+    echo -e "${GREEN}║  📧 Email: $email_count | 📱 Telefoni: $phone_count | 🌐 Social: $social_count${RESET}"
+    echo -e "${GREEN}║  🔗 Subdomains: $sub_count | 🔒 Security: $sec_score/$sec_max${RESET}"
+    echo -e "${GREEN}║  📄 Report: $report_file${RESET}"
+    echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════╝${RESET}"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# FASE 26: WEBSITE VULNERABILITY SCANNER
+# ═══════════════════════════════════════════════════════════════
+
+website_vuln_scan() {
+    local target="$1"
+    local vuln_dir="$REPORTS_DIR/webvuln_$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$vuln_dir"
+    
+    think_phase "WEBSITE VULNERABILITY SCAN: $target"
+    tool_ensure_list nikto dirb whatweb sqlmap sslscan
+    
+    local report_file="$vuln_dir/vuln_report.md"
+    
+    cat > "$report_file" << VULNHEAD
+# 🛡️ Website Vulnerability Report
+## Kali-AI v$VERSION — Web Security Scanner
+**Data:** $(date)
+**Target:** $target
+
+---
+
+VULNHEAD
+
+    # 1. Nikto
+    think_agent "Web Agent 1: Nikto Scan"
+    nikto -h "https://$target" -o "$vuln_dir/nikto.txt" -Format txt 2>/dev/null &
+    local nikto_pid=$!
+    
+    # 2. Directory Bruteforce
+    think_agent "Web Agent 2: Directory Scan"
+    dirb "https://$target" /usr/share/wordlists/dirb/common.txt -o "$vuln_dir/dirb.txt" -S 2>/dev/null &
+    local dirb_pid=$!
+    
+    # 3. WhatWeb fingerprint
+    think_agent "Web Agent 3: Technology Fingerprint"
+    whatweb -a 3 "https://$target" > "$vuln_dir/whatweb.txt" 2>/dev/null &
+    local whatweb_pid=$!
+    
+    # 4. SSL Check
+    think_agent "Web Agent 4: SSL/TLS Audit"
+    if command -v sslscan &>/dev/null; then
+        sslscan "$target" > "$vuln_dir/sslscan.txt" 2>/dev/null &
+        local ssl_pid=$!
+    fi
+    
+    # 5. Header analysis
+    think_agent "Web Agent 5: Header Analysis"
+    curl -sI "https://$target" > "$vuln_dir/headers.txt" 2>/dev/null
+    curl -sI "http://$target" > "$vuln_dir/headers_http.txt" 2>/dev/null
+    
+    # 6. Robots.txt e sitemap
+    think_agent "Web Agent 6: Robots & Sitemap"
+    curl -s "https://$target/robots.txt" > "$vuln_dir/robots.txt" 2>/dev/null
+    curl -s "https://$target/sitemap.xml" > "$vuln_dir/sitemap.xml" 2>/dev/null
+    
+    # Attendi scan paralleli
+    think_thought "Attendo completamento scan paralleli..."
+    wait $nikto_pid 2>/dev/null
+    wait $dirb_pid 2>/dev/null
+    wait $whatweb_pid 2>/dev/null
+    [[ -n "${ssl_pid:-}" ]] && wait $ssl_pid 2>/dev/null
+    
+    # Compila report
+    local nikto_vulns=$(grep -c "OSVDB\|+" "$vuln_dir/nikto.txt" 2>/dev/null || echo 0)
+    local dirs_found=$(grep -c "CODE:200" "$vuln_dir/dirb.txt" 2>/dev/null || echo 0)
+    local ssl_issues=$(grep -ci "weak\|vulnerable\|sslv\|tlsv1\.0" "$vuln_dir/sslscan.txt" 2>/dev/null || echo 0)
+    
+    cat >> "$report_file" << VULNBODY
+## 1. Nikto Scan ($nikto_vulns findings)
+\`\`\`
+$(cat "$vuln_dir/nikto.txt" 2>/dev/null | head -40)
+\`\`\`
+
+## 2. Directory Discovery ($dirs_found trovate)
+\`\`\`
+$(grep "CODE:200" "$vuln_dir/dirb.txt" 2>/dev/null | head -30)
+\`\`\`
+
+## 3. Technology Stack
+\`\`\`
+$(cat "$vuln_dir/whatweb.txt" 2>/dev/null | head -10)
+\`\`\`
+
+## 4. SSL/TLS Audit ($ssl_issues problemi)
+\`\`\`
+$(cat "$vuln_dir/sslscan.txt" 2>/dev/null | head -30)
+\`\`\`
+
+## 5. Robots.txt
+\`\`\`
+$(cat "$vuln_dir/robots.txt" 2>/dev/null | head -20)
+\`\`\`
+
+## 6. Response Headers
+\`\`\`
+$(cat "$vuln_dir/headers.txt" 2>/dev/null)
+\`\`\`
+
+---
+
+## Sommario Vulnerabilità
+| Scanner | Findings |
+|---------|----------|
+| Nikto | $nikto_vulns |
+| Directories | $dirs_found |
+| SSL Issues | $ssl_issues |
+
+---
+*Web Vulnerability Report generato da Kali-AI v$VERSION*
+*⚠️ Solo per penetration testing autorizzato*
+VULNBODY
+
+    think_result "Web Vuln Scan: nikto=$nikto_vulns, dirs=$dirs_found, ssl=$ssl_issues"
+    echo -e "${GREEN}🛡️ Web Vuln Report: $report_file${RESET}"
 }
