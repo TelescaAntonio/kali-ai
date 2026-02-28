@@ -1606,6 +1606,22 @@ main() {
         [[ "$user_input" == "exit" || "$user_input" == "quit" || "$user_input" == "esci" ]] && break
         [[ -z "$user_input" ]] && continue
         handle_special_commands "$user_input" && continue
+        # Intercetta comandi diretti per il dispatch
+        local first_word=$(echo "$user_input" | awk "{print \$1}")
+        local rest=$(echo "$user_input" | cut -d" " -f2-)
+        case "$first_word" in
+            threat_intel) autonomous_command "threat_intel" $(echo "$rest" | awk "{print \$1}") "$(echo "$rest" | cut -d" " -f2-)"; continue ;;
+            investigate) autonomous_command "investigate" $(echo "$rest" | awk "{print \$1}") "$(echo "$rest" | cut -d" " -f2-)"; continue ;;
+            osint) autonomous_command "osint" "$rest"; continue ;;
+            web_vuln) autonomous_command "web_vuln" "$rest"; continue ;;
+            cni) autonomous_command "cni" $(echo "$rest" | awk "{print \$1}") "$(echo "$rest" | cut -d" " -f2-)"; continue ;;
+            crypto_trace) autonomous_command "crypto_trace" $(echo "$rest" | awk "{print \$1}") $(echo "$rest" | awk "{print \$2}") $(echo "$rest" | awk "{print \$3}"); continue ;;
+            forensic_report) autonomous_command "forensic_report" "$rest"; continue ;;
+            monitor_add) autonomous_command "monitor_add" $(echo "$rest" | awk "{print \$1}") $(echo "$rest" | awk "{print \$2}") "$(echo "$rest" | cut -d" " -f3-)"; continue ;;
+            monitor_start) autonomous_command "monitor_start" "$rest"; continue ;;
+            monitor_stop) autonomous_command "monitor_stop"; continue ;;
+            monitor_status) autonomous_command "monitor_status"; continue ;;
+        esac
         process_conversation "$user_input"
     done
 }
@@ -4175,59 +4191,9 @@ REPEOF
     local agent3_pid=$!
 
     # ═══════════════════════════════════════════════
-    # AGENTE 4: SOCIAL MEDIA OSINT (background)
+    # AGENTE 4: SOCIAL MEDIA & ACADEMIC OSINT (script esterno)
     # ═══════════════════════════════════════════════
-    (
-        think_agent "Agent 4: Social Media & Web Presence"
-        
-        # Cerca username su social media
-        local username="$email_user"
-        
-        local social_results=""
-        local platforms=(
-            "https://www.facebook.com/$username"
-            "https://twitter.com/$username"
-            "https://x.com/$username"
-            "https://www.instagram.com/$username"
-            "https://www.linkedin.com/in/$username"
-            "https://github.com/$username"
-            "https://www.reddit.com/user/$username"
-            "https://t.me/$username"
-            "https://www.tiktok.com/@$username"
-            "https://www.youtube.com/@$username"
-            "https://www.pinterest.com/$username"
-            "https://medium.com/@$username"
-            "https://keybase.io/$username"
-            "https://www.flickr.com/people/$username"
-            "https://steamcommunity.com/id/$username"
-        )
-        
-        for url in "${platforms[@]}"; do
-            local http_code=$(curl -sL -o /dev/null -w "%{http_code}" --max-time 5 "$url" 2>/dev/null)
-            if [[ "$http_code" == "200" ]]; then
-                echo "TROVATO: $url (HTTP $http_code)" >> "$case_dir/social_links/found.txt"
-            fi
-        done
-        
-        # Cerca l'email stessa nel web
-        local web_mentions=$(curl -s "https://www.google.com/search?q=%22$suspect_email%22&num=10" 2>/dev/null | \
-            grep -oP 'href="[^"]*"' | grep -v "google" | head -10)
-        echo "$web_mentions" > "$case_dir/social_links/web_mentions.txt"
-        
-        cat > "$case_dir/social_links/analysis.txt" << SOCEOF
-SOCIAL MEDIA OSINT: $username (da $suspect_email)
-
-PROFILI TROVATI:
-$(cat "$case_dir/social_links/found.txt" 2>/dev/null || echo "Nessun profilo trovato")
-
-MENZIONI WEB:
-$(cat "$case_dir/social_links/web_mentions.txt" 2>/dev/null | head -10 || echo "Nessuna menzione")
-SOCEOF
-        
-        local social_count=$(grep -c "TROVATO" "$case_dir/social_links/found.txt" 2>/dev/null || echo 0)
-        echo "[$(date +%H:%M:%S)] EVIDENCE: Social OSINT — $social_count profili trovati per username '$username'" >> "$evidence_log"
-        echo "AGENT4_DONE" > "$case_dir/.agent4_done"
-    ) &
+    bash "$HOME/kali-ai/agent4_osint.sh" "$suspect_email" "$case_dir" "$evidence_log" &
     local agent4_pid=$!
 
     # ═══════════════════════════════════════════════
@@ -4313,7 +4279,7 @@ $(cat "$case_dir/ip_trace/analysis.txt" 2>/dev/null)
 $(cat "$case_dir/email_trace/reputation.txt" 2>/dev/null)
 
 ═══════════════════════════════════════════════════════════════
-4. SOCIAL MEDIA & PRESENZA WEB
+4. SOCIAL MEDIA, ACADEMIC & PROFESSIONAL INTELLIGENCE
 ═══════════════════════════════════════════════════════════════
 $(cat "$case_dir/social_links/analysis.txt" 2>/dev/null)
 
@@ -4363,6 +4329,7 @@ REPBODY
     echo -e "${GREEN}║  📋 Evidence Log: $evidence_log${RESET}"
     echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════╝${RESET}"
 }
+    sleep 2 && mousepad "$report_file" 2>/dev/null &
 
 # ═══════════════════════════════════════════════════════════════
 # FASE 28: CRIMINAL NETWORK INTELLIGENCE ENGINE (CNI)
